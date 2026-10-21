@@ -75,6 +75,10 @@ declare module 'claude-code' {
       btwOpen: boolean
       /** Cards folded down to their title (`group:<name>`); also kept in the store. null = not loaded. */
       folded: string[] | null
+      /** Rows opened by their ▸ button to show the full description (`tool:<id>`, `skill:<id>`, `prompt:<id>`); also kept in the store. null = not loaded. */
+      opened: string[] | null
+      /** The session's folder, as last read for the git and backup rows. */
+      cwd: string
       /** What each list's search field holds (`skills`, `prompts`). */
       listQuery: Record<string, string>
       /** The text in the Side Question's Ask here field, emptied after asking and by ✕ close. */

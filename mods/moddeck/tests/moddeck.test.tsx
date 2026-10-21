@@ -154,6 +154,9 @@ function world(on: On) {
   on('ui.close', (_$, e) => ((w.panes = w.panes.filter(p => p !== e.id)), { value: undefined }))
   on('command.register', () => ({ value: undefined as never }))
   on('prompt.submit', (_$, e) => ({ text: e.text }))
+  on('clock.after', async () => (await new Promise(r => setTimeout(r, 1)), { value: undefined }) as never) // `defer` waits one tick, then reads the installed skills
+  // One installed skill beside the toolkit's five, so the Skills list has six and scrolls.
+  on('session.usage', () => ({ value: { context: { breakdown: { skills: { skillFrontmatter: [{ name: 'zz-extra' }] } } } } as never }))
   return w
 }
 
@@ -162,6 +165,14 @@ const run = ($: Engine, command: string, args: string) =>
 
 const mount = ($: Engine, surface: (typeof SURFACES)[number]) =>
   $.ui.mount({ plugin: 'moddeck', surface, component: 'Pane', requestId: 'moddeck', props: PANE_PROPS, viewport: FULLSCREEN } as never)
+
+/** Mounts a second time, after the first drawing read the installed skills, so the Skills list has the toolkit's five and one more. */
+const mountSkills = async ($: Engine, surface: (typeof SURFACES)[number]) => {
+  const first = await mount($, surface) // the first drawing asks for the installed skills
+  await new Promise(r => setTimeout(r, 30))
+  await first.unmount()
+  return mount($, surface)
+}
 
 /** A switch's drawing: the terminal colours the Text in its Button, the desktop the box around the name. */
 const switchOf = async (pane: { find: (q: { key: string }) => Promise<unknown> }, _surface: string, id: string) =>
@@ -225,8 +236,8 @@ for (const surface of SURFACES) {
     const pane = await mount($, surface)
     await pane.press({ key: 'option:checkpoint:/checkpoint restore ' })
     await pane.press({ key: 'option:branch-janitor:/branch-janitor clean' })
-    await pane.press({ key: 'skill:dual-model-review' })
-    expect(w.filled).toEqual(['/checkpoint restore ', '/branch-janitor clean', 'Use the dual-model-review skill to review my last change'])
+    await pane.press({ key: 'skill:review' })
+    expect(w.filled).toEqual(['/checkpoint restore ', '/branch-janitor clean', 'Use the review skill on my last change'])
   })
 }
 
@@ -277,26 +288,26 @@ test('the skills list has no scroll buttons while all of its skills fit', { ...M
   world(on)
   const pane = await mount($, 'desktop')
   expect(await pane.find({ key: 'skills:down' })).toBeUndefined() // everything fits: no bar, no arrows
-  expect(await pane.find({ key: 'skill:dual-model-review' })).toBeDefined()
+  expect(await pane.find({ key: 'skill:review' })).toBeDefined()
 })
 
 test('with more skills than fit, the list has a scroll bar with ▲ and ▼ (a line each); a click on its track moves a page', async ($, on) => {
   world(on)
-  const pane = await mount($, 'desktop')
+  const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
-  expect(await shown()).toEqual(['skill:dual-model-review', 'skill:agents-md-scaffold', 'skill:align', 'skill:burst', 'skill:assess-plugin'])
+  expect(await shown()).toEqual(['skill:review', 'skill:plan-first', 'skill:writing', 'skill:agents-md-scaffold', 'skill:assess-plugin'])
   expect(await texts(pane)).toContain('Skills · 6')
   expect(JSON.stringify(await pane.find({ key: 'skills:up' }))).toContain('▲')
   expect(JSON.stringify(await pane.find({ key: 'skills:down' }))).toContain('▼')
   expect(JSON.stringify(await pane.find({ key: 'skills:bar:0' }))).toContain('┃') // the thumb at the top
   await pane.press({ key: 'skills:down' }) // ▼: one line down
-  expect((await shown())[0]).toBe('skill:agents-md-scaffold')
+  expect((await shown())[0]).toBe('skill:plan-first')
   await pane.press({ key: 'skills:down' }) // already at the end: stays
-  expect((await shown()).at(-1)).toBe('skill:no-ai-text')
+  expect((await shown()).at(-1)).toBe('skill:zz-extra')
   await pane.press({ key: 'skills:up' }) // ▲: one line up
-  expect((await shown())[0]).toBe('skill:dual-model-review')
+  expect((await shown())[0]).toBe('skill:review')
   await pane.press({ key: 'skills:bar:2' }) // the track below the thumb: a page down, clamped to the last page
-  expect((await shown()).at(-1)).toBe('skill:no-ai-text')
+  expect((await shown()).at(-1)).toBe('skill:zz-extra')
 })
 
 test('more and fewer change how many lines the Skills list shows, never below five, and the choice is kept in the store', async ($, on) => {
@@ -304,7 +315,7 @@ test('more and fewer change how many lines the Skills list shows, never below fi
   const store = new Map<string, unknown>()
   on('store.get', (_$, e) => ({ value: store.get(e.key) }))
   on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
-  const pane = await mount($, 'desktop')
+  const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
   expect((await shown()).length).toBe(5)
   expect(await pane.find({ key: 'skills:fewer' })).toBeUndefined() // five is the floor
@@ -321,18 +332,18 @@ test('a star moves a skill to the top; the list still shows five and scrolls; a 
   const store = new Map<string, unknown>()
   on('store.get', (_$, e) => ({ value: store.get(e.key) }))
   on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
-  const pane = await mount($, 'desktop')
+  const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
-  await pane.press({ key: 'skills:down' }) // scroll to reach no-ai-text
-  await pane.press({ key: 'star:no-ai-text' })
+  await pane.press({ key: 'skills:down' }) // scroll to reach zz-extra
+  await pane.press({ key: 'star:zz-extra' })
   await pane.press({ key: 'skills:up' })
-  expect((await shown())[0]).toBe('skill:no-ai-text')
+  expect((await shown())[0]).toBe('skill:zz-extra')
   expect((await shown()).length).toBe(5)
   expect(await pane.find({ key: 'skills:bar:0' })).toBeDefined()
-  expect(JSON.stringify(await pane.find({ key: 'star:no-ai-text' }))).toContain('★')
-  expect(store.get('starred')).toEqual(['no-ai-text'])
-  await pane.press({ key: 'star:no-ai-text' })
-  expect((await shown())[0]).toBe('skill:dual-model-review')
+  expect(JSON.stringify(await pane.find({ key: 'star:zz-extra' }))).toContain('★')
+  expect(store.get('starred')).toEqual(['zz-extra'])
+  await pane.press({ key: 'star:zz-extra' })
+  expect((await shown())[0]).toBe('skill:review')
 })
 
 test('a skill row is one short line; ▸ opens its full description under it and ▾ closes it', async ($, on) => {
@@ -342,12 +353,12 @@ test('a skill row is one short line; ▸ opens its full description under it and
   on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
   const pane = await mount($, 'desktop')
   const full = 'Interviews you, writes a spec, hands off'
-  expect(JSON.stringify(await pane.find({ key: 'expand:skill:align' }))).toContain('▸')
-  expect(JSON.stringify(await pane.findAll({ type: 'Text' }))).not.toContain('detail:skill:align')
-  await pane.press({ key: 'expand:skill:align' })
-  expect(JSON.stringify(await pane.find({ key: 'expand:skill:align' }))).toContain('▾')
-  expect(JSON.stringify(await pane.findAll({ type: 'Box' }))).toContain('detail:skill:align')
-  expect(store.get('opened')).toEqual(['skill:align'])
+  expect(JSON.stringify(await pane.find({ key: 'expand:skill:plan-first' }))).toContain('▸')
+  expect(JSON.stringify(await pane.findAll({ type: 'Text' }))).not.toContain('detail:skill:plan-first')
+  await pane.press({ key: 'expand:skill:plan-first' })
+  expect(JSON.stringify(await pane.find({ key: 'expand:skill:plan-first' }))).toContain('▾')
+  expect(JSON.stringify(await pane.findAll({ type: 'Box' }))).toContain('detail:skill:plan-first')
+  expect(store.get('opened')).toEqual(['skill:plan-first'])
   expect(full.length).toBeLessThanOrEqual(40)
 })
 
@@ -374,17 +385,17 @@ test('a group with more than 8 tools shows 8, scrolls with ▲ ▼, and a starre
 
 test('typing in the Skills search moves the matches to the top; Enter puts the first in the prompt box and clears the field', async ($, on) => {
   const w = world(on)
-  const pane = await mount($, 'desktop')
+  const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
   expect(JSON.stringify(await pane.find({ key: 'skills:search' }))).toContain('Search skills')
-  await pane.input({ key: 'skills:search', text: 'no', kind: 'change' })
-  expect((await shown())[0]).toBe('skill:no-ai-text')
+  await pane.input({ key: 'skills:search', text: 'zz-e', kind: 'change' })
+  expect((await shown())[0]).toBe('skill:zz-extra')
   expect(await texts(pane)).toContain('Skills · 1 found')
-  await pane.input({ key: 'skills:search', text: 'zz', kind: 'change' })
+  await pane.input({ key: 'skills:search', text: 'qq', kind: 'change' })
   expect(await texts(pane)).toContain('Skills · no match')
-  await pane.input({ key: 'skills:search', text: 'bu', kind: 'change' })
-  await pane.input({ key: 'skills:search', text: 'bu', kind: 'submit' })
-  expect(w.filled.at(-1)).toContain('burst skill')
+  await pane.input({ key: 'skills:search', text: 'wr', kind: 'change' })
+  await pane.input({ key: 'skills:search', text: 'wr', kind: 'submit' })
+  expect(w.filled.at(-1)).toContain('writing skill')
   expect(JSON.stringify(await pane.find({ key: 'skills:search' }))).toContain('"value":""')
 })
 
@@ -583,7 +594,7 @@ test('desktop: the boxes are filled in the dark colours by default, the light on
   let pane = await mount($, 'desktop')
   expect(await boxOf(pane)).toContain('"backgroundColor":"#1F1F1E"')
   expect(await boxOf(pane)).toContain('"color":"#9A9893"') // the descriptions
-  expect(await texts(pane)).toContain('/dual-model-review')
+  expect(await texts(pane)).toContain('/review')
   await pane.unmount()
   await run($, 'moddeck', 'theme light')
   pane = await mount($, 'desktop')
@@ -591,7 +602,7 @@ test('desktop: the boxes are filled in the dark colours by default, the light on
   await pane.unmount()
   pane = await mount($, 'terminal')
   expect(await boxOf(pane)).not.toContain('#1F1F1E') // the terminal keeps its theme
-  expect(await texts(pane)).not.toContain('/dual-model-review')
+  expect(await texts(pane)).not.toContain('/review')
 })
 
 test('terminal: rows keep the plain tree (no minWidth or overflow props), the switch colour is on its text, and the top bar is drawn', MODS, async ($, on) => {

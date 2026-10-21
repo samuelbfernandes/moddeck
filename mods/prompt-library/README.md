@@ -3,7 +3,7 @@
 Install (Claude Code 2.1.295 or later): `/plugin install prompt-library --marketplace samuelbfernandes/moddeck`
 
 ## What it does
-Keeps your saved prompts, per project, one click away. It has no pane of its own: the moddeck side bar reads the
+Keeps your saved prompts, one list for every project, one click away. It has no pane of its own: the moddeck side bar reads the
 list and draws it. Nothing is ever sent for you and no model is called.
 
 ## Use

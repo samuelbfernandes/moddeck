@@ -1,12 +1,13 @@
 ---
 name: agents-md-scaffold
-description: Bootstrap or audit a project's canonical AGENTS.md, gitignored CLAUDE.md pointer, commit-msg guard, decisions log and theory-review rubric, in the FernandesLab style. Use when starting a repo, or when a repo lacks AGENTS.md or its critical rules.
+description: Bootstrap or audit a project's canonical AGENTS.md, gitignored CLAUDE.md pointer, commit-msg guard, decisions log and theory-review rubric, in the FernandesLab style. Use when starting a repo, or when a repo lacks AGENTS.md or its critical rules. Not for repos that already have a current AGENTS.md.
 ---
 
 # AGENTS.md scaffold
 
 The templates follow FernandesLab's strict rules (including "no AI attribution" and "never commit CLAUDE.md"). If the project's
 owner wants different rules, adapt the matching lines instead of copying them blindly.
+First run `git config toolkit.profile`: on `neutral`, omit Critical Rule 1 and the commit-msg step (the hook does not enforce attribution there).
 
 Goal: every project has ONE committed, canonical `AGENTS.md` (read by Claude Code, Codex and any agent) and a gitignored
 `CLAUDE.md` that only points to it. Global rules live in `~/.claude/CLAUDE.md`; AGENTS.md restates the project-specific ones.
@@ -79,7 +80,8 @@ Read ./AGENTS.md first: it is the canonical, committed instruction file for this
 ```
 CLAUDE.md
 CLAUDE.local.md
-.claude/
+.claude/settings.local.json
+.claude/worktrees/
 ```
 
 ## Template: docs/THEORY_REVIEW.md

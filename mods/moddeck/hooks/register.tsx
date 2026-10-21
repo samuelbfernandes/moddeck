@@ -142,9 +142,16 @@ async function flipStar($: Dollar, id: string): Promise<void> {
 /** The session's skills from the engine's own listing (local estimate, no model call), with a description from the matching slash command. */
 async function readSkills($: Dollar): Promise<void> {
   skillsAsked = true
+  try {
+    await readSkillsNow($)
+  } finally {
+    skillsAsked = false // asked again only while the list is still unread (`installed` is null)
+  }
+}
+async function readSkillsNow($: Dollar): Promise<void> {
   const u = await attempt(() => $.session.usage({ breakdown: 'summary' }))
   const listed = u?.context.breakdown?.skills?.skillFrontmatter
-  if (!listed) return
+  if (!listed) return void (await safe(() => update($, installed, () => []))) // nothing to list: stop asking at every drawing
   const cmds = (await attempt(() => $.command.list())) ?? []
   const descOf = new Map(cmds.map(c => [c.name, c.description]))
   await safe(() => update($, installed, () => listed.map(k => ({ name: k.name, desc: descOf.get(k.name) }))))
@@ -227,6 +234,9 @@ const FORMAT_OFF = { plugin: 'format-on-edit', key: 'isOff' } as const
 const LEDGER_OFF = { plugin: 'test-ledger', key: 'isOff' } as const
 const INBOX_OFF = { plugin: 'error-inbox', key: 'isOff' } as const
 const CONCISE_OFF = { plugin: 'concise', key: 'isOff' } as const
+const METHOD_OFF = { plugin: 'method-review', key: 'isOff' } as const
+const VERIFY_OFF = { plugin: 'verify-before-done', key: 'isOff' } as const
+const ROUTER_OFF = { plugin: 'skill-router', key: 'isOff' } as const
 const UPGRADE_AUTO = { plugin: 'prompt-upgrade', key: 'isAuto' } as const
 const TLDR_OFF = { plugin: 'tldr', key: 'isOff' } as const
 const TLDR_MODE = { plugin: 'tldr', key: 'mode' } as const
@@ -1116,6 +1126,9 @@ export const register: Register = (on, options) => {
       'test-ledger': flag(await valueOf($.state.get(LEDGER_OFF as never)), true),
       'error-inbox': flag(await valueOf($.state.get(INBOX_OFF as never)), true),
       concise: flag(await valueOf($.state.get(CONCISE_OFF as never)), true),
+      'method-review': flag(await valueOf($.state.get(METHOD_OFF as never)), true),
+      'verify-before-done': flag(await valueOf($.state.get(VERIFY_OFF as never)), true),
+      'skill-router': flag(await valueOf($.state.get(ROUTER_OFF as never)), true),
       'prompt-upgrade': flag(await valueOf($.state.get(UPGRADE_AUTO as never)), false),
       tldr: flag(await valueOf($.state.get(TLDR_OFF as never)), true),
       'branch-janitor': flag(await valueOf($.state.get(JANITOR_OFF as never)), true), // null outside a repository: not drawn
@@ -1405,7 +1418,7 @@ export const register: Register = (on, options) => {
         </Box>,
       ])
     }
-    if (!skillsAsked) defer($, () => readSkills($))
+    if (!skillsAsked && (await read($, installed)) === null) defer($, () => readSkills($))
     const skills = starFirst(allSkills((await read($, installed)) ?? []), stars, k => k.id)
     const skillCard = skills.length > 0 ? listCard('skills', 'Skills', skills, k => `skill:${k.id}`, k => k.label, k => k.desc, k => k.text, k => k.id) : null
     // Saved prompts (prompt-library): a click puts the text in the prompt box. Not drawn while that mod is not readable.

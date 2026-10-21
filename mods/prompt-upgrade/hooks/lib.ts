@@ -62,9 +62,9 @@ export const QUESTIONS_SYSTEM = [
 
 export const REWRITE_SYSTEM = [
   'You rewrite a rough prompt into one great prompt the person could have typed themselves.',
-  'Keep exactly what they meant. Add a clear goal, who it is for, the format, and what "done" looks like.',
+  'Keep exactly what they meant. Add the goal, the expected output and what "done" looks like; add an audience only for writing meant for people.',
   'Use what they answered to the questions; leave out what they skipped.',
-  'Never invent facts, names, numbers or prices. Where something is unknown, leave a [placeholder] in square brackets.',
+  'Never invent facts, names, numbers, prices, file paths, function names or package versions. Where something is unknown, leave a [placeholder] in square brackets.',
   'Write it as one request in plain language, no preamble, no markdown headings.',
   'Answer with JSON only: {"upgraded": string, "added": string[]} where added lists, in a few words each, the details you added (at most 6).',
 ].join('\n')

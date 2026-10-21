@@ -1,6 +1,6 @@
 {
   "name": "prompt-library",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Keeps your saved prompts, per project: /prompts add, use, rename, remove. The moddeck side bar shows them.",
   "author": { "name": "Samuel Fernandes" },
   "types": "./types/index.d.ts",

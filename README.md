@@ -1,7 +1,7 @@
 # Moddeck
 
 **Safety and productivity mods for Claude Code, built for scientists.**
-Thirty-two small add-ons (mods), six skills and a set of git guards that protect your work, keep your token bill visible, and
+Thirty-seven small add-ons (mods), five skills and a set of git guards that protect your work, keep your token bill visible, and
 stay quiet until they have something useful to say.
 
 > **Credit where it is due.** Not everything here is my own creation. Some mods and skills are adapted from other people's
@@ -75,8 +75,9 @@ Commands always start with `/`; a word without the slash is an ordinary prompt. 
 - `tldr`: a dropdown, off until you pick a mode. **highlight** draws each long reply's must-read sentences bold with ⚑; **summary** also adds a TL;DR box above the prompt (Summary, Needs you, Next). One Haiku call per long reply.
 - `skins`: a dropdown of fifteen colour themes (noir, tokyo-night, dracula, nord, and more) that also redraw tool rows, diffs, tables and code; `off` returns Claude Code's own look. By [hellosverre](https://github.com/hellosverre/claude-skins), MIT.
 - `concise`: a switch, off until you turn it on; then Claude's replies lead with the next action, number the steps, restate where you are and leave tangents for later (adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd), MIT).
+- `skill-router`: a prompt that clearly asks for a toolkit skill (review, plan-first, writing, ahpcc, assess-plugin, agents-md-scaffold) gets one line naming it; local keywords, once per skill per session.
 - `prompt-upgrade`: `/better <prompt>` turns a rough prompt into a great one: up to three multiple-choice questions, a rewrite, then your prompt and the upgrade side by side in a pane. Nothing runs until you press Run. `/better on` sends every typed prompt there first.
-- `prompt-library`: `/prompts` keeps saved prompts per project, one click away in the side bar.
+- `prompt-library`: `/prompts` keeps one list of saved prompts for every project, one click away in the side bar.
 
 **Model controls**
 - `command-guard`: before a risky command, shows exactly what would be lost, with **Cancel** first.
@@ -84,6 +85,8 @@ Commands always start with `/`; a word without the slash is an ordinary prompt. 
 
 **Guards**
 - `secret-guard`: hides keys, tokens and passwords from what Claude reads.
+- `method-review`: when Claude edits method code (paths with blup, herit, selection, variance and similar words), the first `git commit` or `git push` is held once until a second model has reviewed it.
+- `verify-before-done`: a toast, and a reminder to Claude on your next prompt, when a turn changed code and ran no test, check or build.
 - `scope-watch`*: `/scope-watch <folder>`; a note when Claude edits a file outside it.
 - `data-guard`: asks before a commit holds large files, data files, personal-looking column names or notebook outputs.
 - `big-file-guard`: reads only the first lines of a big csv, json or log.
@@ -121,12 +124,11 @@ Commands always start with `/`; a word without the slash is an ordinary prompt. 
 
 ### Skills (Claude loads them by itself)
 
-- `dual-model-review`: a second model tries to prove a change wrong.
+- `review`: a quick self-review for ordinary code; a second model (Codex or a fresh read-only Claude) for genetics, statistics and method changes.
+- `plan-first`: interviews you before a big build, helps choose the design, then writes a spec and hands off to a fresh session.
+- `writing`: options (three graded versions), edit and detect (takes the AI tells out, keeps your voice; includes the humanizer patterns), and rewrite, in one skill.
 - `agents-md-scaffold`: sets up `AGENTS.md`, a decisions log and a review rubric.
-- `align`: interviews you before a big build, then writes a spec.
-- `burst`: three independent versions of a text or idea, graded.
 - `assess-plugin`: what a plugin installs, costs and risks, before you install it.
-- `no-ai-text`: edits AI tells out of a draft and keeps the writer's voice (merged from no-ai-slop and humanizer, both MIT).
 
 ### Git guards and settings
 

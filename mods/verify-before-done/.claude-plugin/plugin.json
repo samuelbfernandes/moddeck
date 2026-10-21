@@ -1,0 +1,7 @@
+{
+  "name": "verify-before-done",
+  "version": "0.1.0",
+  "description": "When a turn changed code and no test, check or build ran, you get a toast at once and Claude is reminded on your next prompt to say what was and was not verified. Never blocks.",
+  "author": { "name": "Samuel Fernandes" },
+  "types": "./types/index.d.ts"
+}

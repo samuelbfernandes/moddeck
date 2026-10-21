@@ -12,27 +12,29 @@ const FAILED = 'Prompts · that did not work, nothing changed'
 /** The list the moddeck side bar reads with $.state.get. */
 const items = atom({ plugin: 'prompt-library', key: 'items' } as const, [])
 
-/** This project's key: per project when the cwd is known, otherwise one shared list. */
-async function keyOf($: Dollar): Promise<string> {
+/** One list for every project. */
+const KEY = 'items'
+
+/** The folder's own list from before the list was shared (kept in the store, never written again). */
+async function legacyOf($: Dollar): Promise<PromptItem[] | undefined> {
   try {
     const cwd = await $.session.cwd()
-    if (typeof cwd === 'string' && cwd !== '') return storeKey(cwd)
+    const raw = typeof cwd === 'string' && cwd !== '' ? await $.store.get(storeKey(cwd)) : undefined
+    return Array.isArray(raw) ? clean(raw) : undefined
   } catch {
-    // one list for everything
+    return undefined
   }
-  return 'items'
 }
 
-/** The saved list; the starters the first time the store has never been written. */
+/** The saved list. The first time the shared list is read it starts from this folder's old list, else the starters. */
 async function load($: Dollar): Promise<{ key: string; list: PromptItem[] }> {
-  const key = await keyOf($)
-  const raw = await $.store.get(key)
+  const raw = await $.store.get(KEY)
   if (raw === undefined) {
-    const list = STARTERS.map(s => ({ ...s }))
-    await $.store.set(key, list)
-    return { key, list }
+    const list = (await legacyOf($)) ?? STARTERS.map(s => ({ ...s }))
+    await $.store.set(KEY, list)
+    return { key: KEY, list }
   }
-  return { key, list: clean(raw) }
+  return { key: KEY, list: clean(raw) }
 }
 
 async function save($: Dollar, key: string, list: PromptItem[]): Promise<void> {

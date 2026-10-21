@@ -1,6 +1,6 @@
 ---
 name: assess-plugin
-description: Assess a Claude Code plugin, mod, skill or MCP server (a repo link or name) before installing it: what it installs, what it costs every turn, whether it is safe, whether it fits this setup, and whether it is needed. Read-only; never installs.
+description: Assess a Claude Code plugin, mod, skill or MCP server (a repo link or name) before installing it: what it installs, what it costs every turn, whether it is safe, whether it fits this setup, and whether it is needed. Read-only; never installs. Not for plugins already installed and working.
 ---
 
 # Assess a plugin before installing it

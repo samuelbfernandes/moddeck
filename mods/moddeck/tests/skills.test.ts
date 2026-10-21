@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { SHORT_MAX, SKILLS, allSkills, listRowsOf, listSize, rankTools, searchFirst, shortDesc, starFirst, toggleStar } from '../hooks/catalog'
 
 test('allSkills keeps the toolkit skills first, then every other installed skill by name, once', () => {
-  const list = allSkills([{ name: 'zeta', desc: 'Z  line' }, { name: 'burst' }, { name: 'plug:align' }, { name: 'alpha' }, { name: 'zeta' }, { name: ' ' }])
+  const list = allSkills([{ name: 'zeta', desc: 'Z  line' }, { name: 'writing' }, { name: 'plug:plan-first' }, { name: 'alpha' }, { name: 'zeta' }, { name: ' ' }])
   expect(list.slice(0, SKILLS.length)).toEqual(SKILLS)
   expect(list.slice(SKILLS.length).map(k => k.id)).toEqual(['alpha', 'zeta'])
   expect(list.find(k => k.id === 'zeta')?.desc).toBe('Z line')
@@ -15,7 +15,7 @@ test('allSkills with nothing read yet is the toolkit list', () => {
 })
 
 test('starFirst moves starred skills up in list order; toggleStar adds and removes', () => {
-  expect(starFirst(SKILLS, ['burst', 'align', 'gone'], k => k.id).map(k => k.id).slice(0, 3)).toEqual(['align', 'burst', 'dual-model-review'])
+  expect(starFirst(SKILLS, ['writing', 'plan-first', 'gone'], k => k.id).map(k => k.id).slice(0, 3)).toEqual(['plan-first', 'writing', 'review'])
   expect(toggleStar(['a'], 'b')).toEqual(['a', 'b'])
   expect(toggleStar(['a', 'b'], 'a')).toEqual(['b'])
 })
@@ -44,9 +44,9 @@ test('rankTools: starred first, then switches that are on, catalogue order kept 
 })
 
 test('searchFirst puts names that start with the query first, then names that contain it, then the rest', () => {
-  const names = ['burst', 'align', 'assess-plugin', 'dual-model-review', 'agents-md-scaffold']
-  expect(searchFirst(names, 'a', n => n)).toEqual({ items: ['align', 'assess-plugin', 'agents-md-scaffold', 'dual-model-review', 'burst'], matches: 4 })
-  expect(searchFirst(names, '/Bu', n => n).items[0]).toBe('burst') // a leading slash and case are ignored
+  const names = ['writing', 'plan-first', 'assess-plugin', 'review', 'agents-md-scaffold']
+  expect(searchFirst(names, 'a', n => n)).toEqual({ items: ['assess-plugin', 'agents-md-scaffold', 'plan-first', 'writing', 'review'], matches: 3 })
+  expect(searchFirst(names, '/Wr', n => n).items[0]).toBe('writing') // a leading slash and case are ignored
   expect(searchFirst(names, 'zzz', n => n)).toEqual({ items: names, matches: 0 })
   expect(searchFirst(names, '  ', n => n)).toEqual({ items: names, matches: 0 })
 })
