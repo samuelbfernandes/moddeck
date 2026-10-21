@@ -213,8 +213,10 @@ const FORMAT_OFF = { plugin: 'format-on-edit', key: 'isOff' } as const
 const LEDGER_OFF = { plugin: 'test-ledger', key: 'isOff' } as const
 const INBOX_OFF = { plugin: 'error-inbox', key: 'isOff' } as const
 const CONCISE_OFF = { plugin: 'concise', key: 'isOff' } as const
+const UPGRADE_AUTO = { plugin: 'prompt-upgrade', key: 'isAuto' } as const
 const TLDR_OFF = { plugin: 'tldr', key: 'isOff' } as const
 const TLDR_MODE = { plugin: 'tldr', key: 'mode' } as const
+const SKINS_PREFS = { plugin: 'skins', key: 'prefs' } as const
 
 async function valueOf(read: Promise<unknown>): Promise<unknown> {
   try {
@@ -1100,6 +1102,7 @@ export const register: Register = (on, options) => {
       'test-ledger': flag(await valueOf($.state.get(LEDGER_OFF as never)), true),
       'error-inbox': flag(await valueOf($.state.get(INBOX_OFF as never)), true),
       concise: flag(await valueOf($.state.get(CONCISE_OFF as never)), true),
+      'prompt-upgrade': flag(await valueOf($.state.get(UPGRADE_AUTO as never)), false),
       tldr: flag(await valueOf($.state.get(TLDR_OFF as never)), true),
       'branch-janitor': flag(await valueOf($.state.get(JANITOR_OFF as never)), true), // null outside a repository: not drawn
       'progress': flag(await valueOf($.state.get(BAND_HIDDEN as never)), true),
@@ -1118,7 +1121,11 @@ export const register: Register = (on, options) => {
     const advisorBlock = noAdvisor === '1' ? 'CLAUDE_CODE_DISABLE_ADVISOR_TOOL' : noTelemetry === '1' ? 'DISABLE_TELEMETRY' : undefined
     // tldr's level: off, or the mode it is in (highlight or summary); undefined while the mod is not readable.
     const tldrModeNow = await valueOf($.state.get(TLDR_MODE as never))
+    // skins' level is the skin in use (or off); undefined while the mod is not readable.
+    const skinPrefs = await valueOf($.state.get(SKINS_PREFS as never))
+    const skinNow = typeof (skinPrefs as { skin?: unknown } | undefined)?.skin === 'string' ? (skinPrefs as { skin: string }).skin : undefined
     const levelOf: Record<string, string | undefined> = {
+      skins: skinNow,
       'command-guard': chosen['command-guard'] ?? (typeof blast === 'string' ? blast : undefined),
       advisor: savedAdvisor, // the setting: /advisor writes it, a pick here only fills the prompt box
       tldr: ons.tldr === undefined ? undefined : ons.tldr ? (tldrModeNow === 'highlight' ? 'highlight' : 'summary') : 'off',
@@ -1133,10 +1140,23 @@ export const register: Register = (on, options) => {
     const isOnOf = (t: Tool): boolean | undefined => (t.levels !== undefined ? (levelOf[t.id] === undefined ? undefined : levelOf[t.id] !== 'off') : ons[t.id])
     const visible = (t: Tool): boolean => (t.isSwitch || t.levels !== undefined ? isOnOf(t) !== undefined : true)
     const actionsShown = (t: Tool): Option[] => (t.isSwitch && !isOnOf(t) ? [] : (t.options ?? []))
+    // Text that a line cuts off ("…") shows in full on hover: the tip is a card laid over the line just below it, lit by
+    // the "tip:<id>" hover group that the line's name, buttons and description all belong to (like the Side Question tip).
+    const tipHover = (id: string) => ({ scope: `tip:${id}` })
+    const tipCard = (id: string, text: string) => (
+      <Box key={`tip:${id}`} position="absolute" top={1} left={0} right={0} display="none" hover={{ scope: `tip:${id}`, display: 'flex' }} borderStyle="round" paddingX={1} {...fill}>
+        <Text {...(ink ? { color: ink.text } : {})} wrap="wrap">
+          {text}
+        </Text>
+      </Box>
+    )
+    const howRuns = (a: Action) => (a.run ? `Runs ${a.text.trim()}` : `Puts ${a.text.trimEnd()} in the prompt box`)
     const action = (key: string, label: string, act1: Action, costs?: boolean) => (
-      <Button key={key} plain onPress={() => act($, act1)}>
-        <Text color={link}>{`[${priced(label, costs)}]`}</Text>
-      </Button>
+      <Box key={`hover:${key}`} flexShrink={0} hover={tipHover(key)}>
+        <Button key={key} plain onPress={() => act($, act1)}>
+          <Text color={link}>{`[${priced(label, costs)}]`}</Text>
+        </Button>
+      </Box>
     )
     const nameOf = (t: Tool) => priced(t.label, t.costs)
     const line = (t: Tool, nameWidth: number) => {
@@ -1177,17 +1197,21 @@ export const register: Register = (on, options) => {
       )
       return (
         <Box key={`row:${t.id}`} columnGap={1} {...fit}>
-          <Box flexShrink={0} columnGap={1}>
+          <Box flexShrink={0} columnGap={1} hover={tipHover(t.id)}>
             {name}
             {dot as never}
             {level as never}
+          </Box>
+          <Box flexShrink={0} columnGap={1}>
             {actionsShown(t).map(o => action(`option:${t.id}:${o.text}`, o.label, o, o.costs))}
           </Box>
-          <Box flexGrow={1} flexShrink={1} {...fit}>
+          <Box flexGrow={1} flexShrink={1} {...fit} hover={tipHover(t.id)}>
             <Text {...dim} wrap="truncate-end">
               {descOf(t) ?? t.note ?? ''}
             </Text>
           </Box>
+          {(descOf(t) ?? t.note) !== undefined && tipCard(t.id, `${t.label}: ${descOf(t) ?? t.note}${t.costs ? ' ($ spends model tokens)' : ''}`)}
+          {actionsShown(t).map(o => tipCard(`option:${t.id}:${o.text}`, howRuns(o)))}
         </Box>
       )
     }
@@ -1269,18 +1293,19 @@ export const register: Register = (on, options) => {
               </Button>
             </Box>
           )}
-          <Box flexShrink={0}>
+          <Box flexShrink={0} hover={tipHover(keyOf(item))}>
             <Button key={keyOf(item)} plain onPress={() => act($, { text: text(item), run: false })}>
               <Text bold color={link} underline={isHit(n) && n === 0}>
                 {nameOf(item).padEnd(nameWidth)}
               </Text>
             </Button>
           </Box>
-          <Box flexGrow={1} flexShrink={1} {...fit}>
+          <Box flexGrow={1} flexShrink={1} {...fit} hover={tipHover(keyOf(item))}>
             <Text {...dim} wrap="truncate-end">
               {desc(item)}
             </Text>
           </Box>
+          {desc(item) !== '' && tipCard(keyOf(item), `${label(item)}: ${desc(item)}`)}
         </Box>
       ))
       const cells = trackCells(shown)

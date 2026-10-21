@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { HIGHLIGHT, addMarks, markText, parseDigest, splitBlocks } from '../hooks/lib'
+import { HIGHLIGHT, addMarks, addSeen, dropSeen, markText, parseDigest, splitBlocks } from '../hooks/lib'
 
 const REPLY = [
   'I renamed the eight mods and ran every test.',
@@ -57,6 +57,12 @@ test('markText bolds each must-read sentence, but never inside code', () => {
   expect(markText('nothing here', ['You need to restart'])).toBeUndefined()
   expect(markText(out, ['You need to restart the app before the new names load.'])).toBeUndefined() // already marked
   expect(addMarks(['a', 'b'], ['b', 'c'])).toEqual(['b', 'c', 'a'])
+})
+
+test('a point flagged before is dropped, whatever its case or punctuation, and the memory is capped and newest first', () => {
+  expect(dropSeen(['Restart the app.', 'Merge the PR'], ['restart the app'])).toEqual(['Merge the PR'])
+  expect(addSeen(['a', 'b'], ['B!', 'c'])).toEqual(['B!', 'c', 'a'])
+  expect(addSeen(Array.from({ length: 40 }, (_, i) => `p${i}`), ['new']).length).toBe(30)
 })
 
 test('off by default: a long reply makes no model call', async ($, on) => {

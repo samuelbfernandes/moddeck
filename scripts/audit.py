@@ -37,6 +37,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "repro-log": {"git", "python3", "node", "R"},          # only `--version` probes, for runtimes that appeared in the session
     "auto-test": {"npm", "python3", "sh", "Rscript"},           # runs the project's own tests (pytest, npm test); `sh -c` only for a command the person set; off until switched on
     "prompt-library": set(),
+    "prompt-upgrade": set(),
     "checkpoint": {"git", "rm", "cmd"},          # rm / del only on a confirmed restore, only paths the dialog listed
     "long-run-ping": set(),
     "ssh-connect": {"ssh", "cmd"},          # opens a terminal window (osascript / cmd start / a Linux terminal) running `ssh <host>` for a Host the person named; host names validated, argv arrays only, no password or code ever handled
@@ -49,6 +50,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "error-inbox": set(),
     "concise": set(),
     "tldr": set(),
+    "skins": set(),   # hellosverre/claude-skins (MIT), vendored; its update check was removed
     "decision-log": set(),
     "format-on-edit": {"air", "ruff", "jarl", "prettier", "biome"},   # only when switched on, on the one file Claude just edited, if the tool is installed
     "ui-preview": {"Rscript", "npm", "shiny", "streamlit", "google-chrome", "chromium", "chromium-browser"},   # your app's own server, and a headless browser for a screenshot; only on /ui-preview start|shot
@@ -57,7 +59,7 @@ ALLOW_NETWORK: set[str] = {"moddeck", "ui-preview"}      # moddeck names the Git
 NEVER_PROGRAMS = {"curl", "wget", "ssh", "scp", "nc", "ncat", "telnet", "sudo", "powershell", "pwsh", "bash", "sh", "zsh", "cmd", "python", "python3", "node", "npm", "npx", "pip", "rm", "mv", "chmod"}
 KNOWN_PROGRAMS = {"git", "gh", "codex", "claude", "du", "find", "pipx", "uvx", "air", "ruff", "jarl", "prettier", "biome", "Rscript", "R", "shiny", "streamlit", "google-chrome", "chromium", "chromium-browser"} | NEVER_PROGRAMS
 
-NETWORK_RE = re.compile(r"\$\.http\b|\.http\.fetch|\bfetch\s*\(|XMLHttpRequest|WebSocket|https?://")
+NETWORK_RE = re.compile(r"\$\.http\b|\.http\.fetch|\bfetch\s*\(|XMLHttpRequest|WebSocket|https?://(?!www\.w3\.org/)")  # an XML namespace name (xmlns="http://www.w3.org/2000/svg") is not a request
 DYNAMIC_RE = re.compile(r"\beval\s*\(|new\s+Function\s*\(|\bimport\s*\(|\brequire\s*\(|child_process")
 ARGV_HEAD_RE = re.compile(r"""\[\s*(['"])([\w.+-]+)\1\s*[,\]]""")
 EVENT_RE = re.compile(r"""\bon\(\s*['"]([\w.:-]+)['"]""")

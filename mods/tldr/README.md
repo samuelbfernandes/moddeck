@@ -12,6 +12,9 @@ goes once to a small model (Haiku), which:
 - writes a box above the prompt: **TL;DR** (two or three sentences), **⚑ Needs you**, **→ Next**. ▾ folds it to one line,
   ✕ puts it away until the next long reply.
 
+- does not repeat itself: a ⚑ Needs you or → Next point already shown earlier in the session is left out of the box (and
+  the small model is told which ones to skip). `/clear` forgets them.
+
 The call runs after the turn has ended, so nothing waits on it, and nothing is added to the conversation.
 
 ## Modes

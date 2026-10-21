@@ -26,6 +26,7 @@ declare module 'claude-code' {
       digest: TldrDigest | null
       /** Must-read sentences of this session's recent replies, marked wherever the transcript draws them. */
       marks: string[]
+      seen: string[]
       /** The box above the prompt is folded to one line. */
       isFolded: boolean
     }

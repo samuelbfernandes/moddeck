@@ -108,6 +108,11 @@
       "description": "Keeps your saved prompts, per project: /prompts add, use, rename, remove. The moddeck side bar shows them."
     },
     {
+      "name": "prompt-upgrade",
+      "source": "./mods/prompt-upgrade",
+      "description": "Turns a rough prompt into a great one before it is sent: up to three multiple-choice questions, a rewrite, and the original beside the upgrade in a pane. Nothing runs until you press Run. /better <prompt>, /better on|off|history."
+    },
+    {
       "name": "reflect",
       "source": "./mods/reflect",
       "description": "Turns your corrections (\"no, use pnpm\", \"never do X\") into rules you can save to CLAUDE.md with one click."
@@ -131,6 +136,11 @@
       "name": "secret-guard",
       "source": "./mods/secret-guard",
       "description": "Keeps secrets (API keys, tokens, passwords, private keys) out of the model's context: hides them in tool output and asks before a typed prompt that contains one is sent."
+    },
+    {
+      "name": "skins",
+      "source": "./mods/skins",
+      "description": "Skins for Claude Code: tool rows that open onto their input and answer, highlighted code, diff, table, math, Mermaid and shell cards, a usage band and fifteen colour themes. Pick one in the moddeck side bar or with /skin. By hellosverre (MIT), vendored without the update check and star ask."
     },
     {
       "name": "ssh-connect",

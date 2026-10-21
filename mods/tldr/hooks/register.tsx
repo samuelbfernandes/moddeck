@@ -7,7 +7,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { TldrDigest, TldrMode } from '../types'
-import { HIGHLIGHT_COLORS, HIGHLIGHT_DEFAULT, SYSTEM, addMarks, isHighlightColor, markText, parseDigest, promptFor, splitBlocks, type HighlightColor } from './lib'
+import { HIGHLIGHT_COLORS, HIGHLIGHT_DEFAULT, SYSTEM, addMarks, addSeen, dropSeen, isHighlightColor, markText, parseDigest, promptFor, splitBlocks, type HighlightColor } from './lib'
 
 type Dollar = EngineInterface
 
@@ -18,6 +18,7 @@ const mode = atom({ plugin: 'tldr', key: 'mode' } as const, 'summary' as TldrMod
 const color = atom({ plugin: 'tldr', key: 'color' } as const, HIGHLIGHT_DEFAULT as HighlightColor)
 const digest = atom({ plugin: 'tldr', key: 'digest' } as const, null as TldrDigest | null)
 const marks = atom({ plugin: 'tldr', key: 'marks' } as const, [] as string[])
+const seen = atom({ plugin: 'tldr', key: 'seen' } as const, [] as string[]) // needs and next points already shown this session
 const isFolded = atom({ plugin: 'tldr', key: 'isFolded' } as const, false)
 
 async function isOn($: Dollar): Promise<boolean> {
@@ -93,10 +94,14 @@ const MODE_TEXT: Record<TldrMode, string> = {
 /** One small-model call over the reply; the digest and its must-read sentences replace the last ones. */
 async function digestReply($: Dollar, reply: string): Promise<void> {
   try {
-    const r = await $.model.complete({ model: 'haiku', system: SYSTEM, prompt: promptFor(reply), maxTokens: 700, timeoutMs: 60_000 })
+    const r = await $.model.complete({ model: 'haiku', system: SYSTEM, prompt: promptFor(reply, await read($, seen)), maxTokens: 700, timeoutMs: 60_000 })
     if (!r.isAnswered) return
-    const d = parseDigest(r.text, reply)
-    if (d === undefined) return
+    const parsed = parseDigest(r.text, reply)
+    if (parsed === undefined) return
+    // A point flagged in an earlier reply is not shown again.
+    const before = await read($, seen)
+    const d = { ...parsed, needs: dropSeen(parsed.needs, before), next: dropSeen(parsed.next, before) }
+    await update($, seen, list => addSeen(list, [...d.needs, ...d.next]))
     await update($, digest, () => d)
     await update($, isFolded, () => false)
     if (d.mustRead.length > 0) await update($, marks, list => addMarks(list, d.mustRead))
@@ -154,7 +159,8 @@ export const register: Register = (on, options) => {
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') {
       await update($, digest, () => null).catch(() => undefined)
-      await update($, marks, () => []).catch(() => undefined)
+      await update($, marks, () => [])
+      await update($, seen, () => []).catch(() => undefined).catch(() => undefined)
     }
     return next(e)
   })
