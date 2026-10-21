@@ -8,7 +8,7 @@ A side bar beside the chat with a live **Session** box on top, then the toolkit'
 
 ![The lower part: Workspace utilities, UI development, Skills and Prompts](../../docs/images/moddeck-sidebar-lower.png)
 
-Dropdowns sit right after a name: `tldr` (off, highlight, summary), `command-guard` (off, low, medium, high) and `advisor`
+Hover a line to read its full description, and a `[button]` to see what it runs. Dropdowns sit right after a name: `skins` (off and fifteen skins; by hellosverre), `tldr` (off, highlight, summary), `command-guard` (off, low, medium, high) and `advisor`
 (off, opus, fable). A green dot is on, red is off, and the ☀ / ☾ buttons at the top set the pane's colours.
 
 ## The Session box (top of the side bar)

@@ -42,6 +42,9 @@ export type Tool = {
   options?: Option[]
 }
 
+/** The skins mod's built-in skins (hellosverre/claude-skins), in its own order; a made `my-<name>` skin is added when in use. */
+export const SKIN_NAMES = ['noir', 'tokyo-night', 'dracula', 'nord', 'gruvbox', 'catppuccin', 'rose-pine', 'everforest', 'one-dark', 'solarized', 'github', 'kanagawa', 'ayu', 'night-owl', 'mono']
+
 export const TOOLS: Tool[] = [
   {
     id: 'model-picker',
@@ -66,7 +69,31 @@ export const TOOLS: Tool[] = [
     isSwitch: true,
     command: 'reflect',
   },
+  {
+    id: 'prompt-upgrade',
+    label: 'prompt-upgrade',
+    group: 'Prompt helpers',
+    icon: '⇪',
+    desc: 'Turns a rough prompt into a great one before it is sent; the switch sends every typed prompt there first',
+    costs: true,
+    isSwitch: true,
+    command: 'better',
+    options: [
+      { label: 'upgrade', text: '/better ', run: false },
+      { label: 'history', text: '/better history', run: true },
+    ],
+  },
   { id: 'tldr', label: 'tldr', group: 'Prompt helpers', icon: '⚑', desc: 'Marks what you must not skip in long replies; summary adds a box above the prompt', costs: true, command: 'tldr', levels: ['off', 'highlight', 'summary'], defaultLevel: 'summary' },
+  {
+    id: 'skins',
+    label: 'skins',
+    group: 'Workspace utilities',
+    icon: '◈',
+    desc: 'Colour theme and richer cards for Claude Code, by hellosverre (MIT); pick one from the list',
+    command: 'skin',
+    levels: ['off', ...SKIN_NAMES],
+    defaultLevel: 'noir',
+  },
   { id: 'concise', label: 'concise', group: 'Prompt helpers', icon: '»', desc: 'Short, action-first replies', isSwitch: true, command: 'concise' },
   // Each mod keeps its own on/off and answers /<command> on|off; the side bar only reads their state.
   { id: 'secret-guard', label: 'secret-guard', group: 'Guards', icon: '🔒', desc: 'Keeps secrets out of the context', isSwitch: true, command: 'secret-guard' },

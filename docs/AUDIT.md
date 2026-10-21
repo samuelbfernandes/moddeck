@@ -27,11 +27,13 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | model-picker | no | codex | no | yes | command.run, prompt.submit, session.end, session.start, tool.call, turn.complete, turn.step |
 | progress | no | none | no | no | agent.spawn, command.run, session.start, tool.call, turn.complete, turn.step, ui.render |
 | prompt-library | no | none | no | no | command.run, session.start |
+| prompt-upgrade | no | none | no | yes | command.run, prompt.submit, session.start, ui.render |
 | reflect | no | none | yes | yes | command.run, prompt.submit, session.start, ui.render |
 | repro-log | no | R, git, node, python3 | yes | no | command.run, session.start, tool.call |
 | review-cost | no | git | no | no | command.run, session.start, tool.call, ui.render |
 | scope-watch | no | none | no | no | command.run, session.start, tool.call |
 | secret-guard | no | none | no | no | command.run, prompt.submit, session.append, session.start, tool.call |
+| skins | no | none | no | no | classic.SessionStart, command.run, config.set, engine.create, prompt.compose, session.append, session.measure, session.start, skins.markdown, tool.call, turn.complete, turn.start, ui.invalidate, ui.render |
 | ssh-connect | no | cmd, ssh | no | no | command.run, session.start |
 | staged-diff | no | git | no | no | command.run, session.start, ui.render |
 | table-preview | no | none | no | no | command.run, session.start, ui.render |

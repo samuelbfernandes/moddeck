@@ -1,6 +1,7 @@
 // tldr: pure helpers. The prompt to the small model, reading its answer, and marking the must-read sentences in a reply.
 import type { TldrDigest } from '../types'
 
+export const MAX_SEEN = 30 // flagged points remembered, so the box does not repeat itself
 export const MAX_MARKS = 40 // sentences kept for marking, across recent replies
 export const MAX_REPLY_CHARS = 24_000 // what the small model is shown of a very long reply
 export const MARK = '⚑'
@@ -31,8 +32,23 @@ export const SYSTEM = [
   'mustRead: at most 5 sentences the reader must not skip, COPIED WORD FOR WORD from the reply (a question asked of them, a decision made for them, a warning, a failure, a required action, a number they need). No paraphrase.',
 ].join('\n')
 
-export const promptFor = (reply: string): string =>
+export const promptFor = (reply: string, seen: readonly string[] = []): string =>
+  (seen.length > 0 ? `Already flagged to the reader earlier (leave these out of needs and next):\n${seen.slice(0, 10).map(s => `- ${s}`).join('\n')}\n\n` : '') +
   `The reply:\n\n${reply.length > MAX_REPLY_CHARS ? `${reply.slice(0, MAX_REPLY_CHARS)}\n[cut]` : reply}`
+
+const squash = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+
+/** The items not flagged before (compared without case or punctuation). */
+export const dropSeen = (items: readonly string[], seen: readonly string[]): string[] => {
+  const known = new Set(seen.map(squash))
+  return items.filter(s => !known.has(squash(s)))
+}
+
+/** Newest first, no repeats, at most MAX_SEEN. */
+export const addSeen = (list: readonly string[], fresh: readonly string[]): string[] => {
+  const keys = new Set(fresh.map(squash))
+  return [...fresh, ...list.filter(s => !keys.has(squash(s)))].slice(0, MAX_SEEN)
+}
 
 const strings = (v: unknown, max: number): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map(x => x.trim()).slice(0, max) : []

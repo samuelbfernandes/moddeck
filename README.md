@@ -1,12 +1,13 @@
 # Moddeck
 
 **Safety and productivity mods for Claude Code, built for scientists.**
-Thirty-one small add-ons (mods), six skills and a set of git guards that protect your work, keep your token bill visible, and
+Thirty-two small add-ons (mods), six skills and a set of git guards that protect your work, keep your token bill visible, and
 stay quiet until they have something useful to say.
 
 > **Credit where it is due.** Not everything here is my own creation. Some mods and skills are adapted from other people's
 > ideas and guides, and some features already exist inside Claude Code or as
 > Anthropic's official plugins: Moddeck simply switches them on and makes them easier to reach.
+> `skins` (fifteen colour themes, picked from a dropdown) is [hellosverre/claude-skins](https://github.com/hellosverre/claude-skins) (MIT, © 2026 hellosverre), copied with its update check removed.
 > Seven mods (staged-diff, contrast-check, table-preview, test-ledger, scope-watch, error-inbox, decision-log) are adapted from
 > [whyashthakker/awesome-claude-code-mods](https://github.com/whyashthakker/awesome-claude-code-mods) (MIT, © 2026 Yash
 > Thakker and contributors), rewritten for moddeck; each keeps the original licence and says what changed in its README.
@@ -72,7 +73,9 @@ Commands always start with `/`; a word without the slash is an ordinary prompt. 
 - `model-picker`: suggests a cheaper or stronger model when your prompt calls for it, and flags an effort level that does not fit.
 - `reflect`: offers to save a rule when you correct Claude (spends a few tokens).
 - `tldr`: a dropdown, off until you pick a mode. **highlight** draws each long reply's must-read sentences bold with ⚑; **summary** also adds a TL;DR box above the prompt (Summary, Needs you, Next). One Haiku call per long reply.
+- `skins`: a dropdown of fifteen colour themes (noir, tokyo-night, dracula, nord, and more) that also redraw tool rows, diffs, tables and code; `off` returns Claude Code's own look. By [hellosverre](https://github.com/hellosverre/claude-skins), MIT.
 - `concise`: a switch, off until you turn it on; then Claude's replies lead with the next action, number the steps, restate where you are and leave tangents for later (adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd), MIT).
+- `prompt-upgrade`: `/better <prompt>` turns a rough prompt into a great one: up to three multiple-choice questions, a rewrite, then your prompt and the upgrade side by side in a pane. Nothing runs until you press Run. `/better on` sends every typed prompt there first.
 - `prompt-library`: `/prompts` keeps saved prompts per project, one click away in the side bar.
 
 **Model controls**
