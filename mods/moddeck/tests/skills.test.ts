@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { SKILLS, allSkills, listRowsOf, listSize, rankTools, searchFirst, starFirst, toggleStar } from '../hooks/catalog'
+import { SHORT_MAX, SKILLS, allSkills, listRowsOf, listSize, rankTools, searchFirst, shortDesc, starFirst, toggleStar } from '../hooks/catalog'
 
 test('allSkills keeps the toolkit skills first, then every other installed skill by name, once', () => {
   const list = allSkills([{ name: 'zeta', desc: 'Z  line' }, { name: 'burst' }, { name: 'plug:align' }, { name: 'alpha' }, { name: 'zeta' }, { name: ' ' }])
@@ -49,4 +49,11 @@ test('searchFirst puts names that start with the query first, then names that co
   expect(searchFirst(names, '/Bu', n => n).items[0]).toBe('burst') // a leading slash and case are ignored
   expect(searchFirst(names, 'zzz', n => n)).toEqual({ items: names, matches: 0 })
   expect(searchFirst(names, '  ', n => n)).toEqual({ items: names, matches: 0 })
+})
+
+test('shortDesc keeps the first clause and cuts a long one at a word with …', () => {
+  expect(shortDesc('Snapshots of the working tree')).toBe('Snapshots of the working tree')
+  expect(shortDesc('Claude consults a stronger model at hard decisions (experimental, API only)').length).toBeLessThanOrEqual(SHORT_MAX)
+  expect(shortDesc('Claude consults a stronger model at hard decisions (experimental, API only)')).toMatch(/…$/)
+  expect(shortDesc('Asks first; then does more')).toBe('Asks first')
 })

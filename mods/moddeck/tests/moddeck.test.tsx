@@ -335,6 +335,22 @@ test('a star moves a skill to the top; the list still shows five and scrolls; a 
   expect((await shown())[0]).toBe('skill:dual-model-review')
 })
 
+test('a skill row is one short line; ▸ opens its full description under it and ▾ closes it', async ($, on) => {
+  world(on)
+  const store = new Map<string, unknown>()
+  on('store.get', (_$, e) => ({ value: store.get(e.key) }))
+  on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
+  const pane = await mount($, 'desktop')
+  const full = 'Interviews you, writes a spec, hands off'
+  expect(JSON.stringify(await pane.find({ key: 'expand:skill:align' }))).toContain('▸')
+  expect(JSON.stringify(await pane.findAll({ type: 'Text' }))).not.toContain('detail:skill:align')
+  await pane.press({ key: 'expand:skill:align' })
+  expect(JSON.stringify(await pane.find({ key: 'expand:skill:align' }))).toContain('▾')
+  expect(JSON.stringify(await pane.findAll({ type: 'Box' }))).toContain('detail:skill:align')
+  expect(store.get('opened')).toEqual(['skill:align'])
+  expect(full.length).toBeLessThanOrEqual(40)
+})
+
 test('a group with more than 8 tools shows 8, scrolls with ▲ ▼, and a starred tool moves to the top', MODS, async ($, on) => {
   world(on)
   const store = new Map<string, unknown>()

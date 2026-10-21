@@ -45,6 +45,15 @@ export type Tool = {
 /** The skins mod's built-in skins (hellosverre/claude-skins), in its own order; a made `my-<name>` skin is added when in use. */
 export const SKIN_NAMES = ['noir', 'tokyo-night', 'dracula', 'nord', 'gruvbox', 'catppuccin', 'rose-pine', 'everforest', 'one-dark', 'solarized', 'github', 'kanagawa', 'ayu', 'night-owl', 'mono']
 
+/** The one-line form of a description: its first clause, cut at a word at SHORT_MAX characters. The full text sits behind the row's expand button. */
+export const SHORT_MAX = 40
+export function shortDesc(text: string): string {
+  const first = text.split(/ \(|; |, | · | — |\. /)[0]!.trim()
+  if (first.length <= SHORT_MAX) return first
+  const cut = first.slice(0, SHORT_MAX - 1)
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 1)).trimEnd()}…`
+}
+
 export const TOOLS: Tool[] = [
   {
     id: 'model-picker',
