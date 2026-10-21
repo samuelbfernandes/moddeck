@@ -7,7 +7,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { BtwEntry } from '../types'
 import { INSTRUCTION, addEntry, buildPrompt, cutAnswer, digest, fallbackPrompt, footer, headline, isRunning, maxCharsOf, nextId, patchEntry, tokensOf, whyNot } from './btw'
-import { GROUPS, MAX_LIST_ROWS, MIN_LIST_ROWS, TOOLS, allSkills, listRowsOf, listSize, priced, rankTools, searchFirst, splitCommand, starFirst, toggleStar } from './catalog'
+import { GROUPS, MAX_LIST_ROWS, MIN_LIST_ROWS, TOOLS, allSkills, listRowsOf, listSize, priced, rankTools, searchFirst, shortDesc, splitCommand, starFirst, toggleStar } from './catalog'
 import type { Action, InstalledSkill, Option, SavedPrompt, Tool } from './catalog'
 import { CARD_CHROME, barTarget, listAt, pillText, scrollBar, stepTop, trackCells } from './layout'
 import type { BottomList } from './layout'
@@ -71,6 +71,8 @@ const btwList = atom({ plugin: 'moddeck', key: 'btw' } as const, [] as BtwEntry[
 const listQuery = atom({ plugin: 'moddeck', key: 'listQuery' } as const, {} as Record<string, string>)
 /** Cards folded down to their title by their ▾ button (`group:<name>`, `group:skills`, `group:prompts`); kept in the store as `folded`. null = not loaded. */
 const folded = atom({ plugin: 'moddeck', key: 'folded' } as const, null as string[] | null)
+/** Rows opened by their ▸ button to show the full description (`tool:<id>`, `skill:<id>`, `prompt:<id>`); kept in the store as `opened`. null = not loaded. */
+const opened = atom({ plugin: 'moddeck', key: 'opened' } as const, null as string[] | null)
 const btwDraft = atom({ plugin: 'moddeck', key: 'btwDraft' } as const, '')
 /** A newer release the person has not updated to yet (null = none known); the side bar shows a one-line button for it. */
 const updateAvail = atom({ plugin: 'moddeck', key: 'updateAvail' } as const, null as string | null)
@@ -113,6 +115,18 @@ async function flipFold($: Dollar, key: string): Promise<void> {
   const next = toggleStar(await foldedPicked($), key)
   await update($, folded, () => next)
   await safe(() => $.store.set('folded', next))
+}
+async function openedPicked($: Dollar): Promise<string[]> {
+  const now = await read($, opened)
+  if (now !== null) return now
+  const kept = (await stored<string[]>($, 'opened')) ?? []
+  await safe(() => update($, opened, () => kept))
+  return kept
+}
+async function flipOpen($: Dollar, key: string): Promise<void> {
+  const next = toggleStar(await openedPicked($), key)
+  await update($, opened, () => next)
+  await safe(() => $.store.set('opened', next))
 }
 async function setRows($: Dollar, id: string, n: number): Promise<void> {
   const next = { ...(await rowsPicked($)), [id]: n }
@@ -1159,6 +1173,23 @@ export const register: Register = (on, options) => {
       </Box>
     )
     const nameOf = (t: Tool) => priced(t.label, t.costs)
+    const openRows = await openedPicked($)
+    // The ▸ / ▾ button that opens a row's full description under it; the row itself stays one line.
+    const expander = (key: string, label: string) => (
+      <Box key={`open:${key}`} flexShrink={0}>
+        <Button key={`expand:${key}`} plain label={desk ? undefined : `${openRows.includes(key) ? 'collapse' : 'expand'} ${label}`} onPress={() => void flipOpen($, key)}>
+          <Text color={link}>{openRows.includes(key) ? '▾' : '▸'}</Text>
+        </Button>
+      </Box>
+    )
+    const detail = (key: string, text: string) =>
+      openRows.includes(key) && (
+        <Box key={`detail:${key}`} paddingLeft={2} {...fit}>
+          <Text {...dim} wrap="wrap">
+            {text}
+          </Text>
+        </Box>
+      )
     const line = (t: Tool, nameWidth: number) => {
       const isOn = isOnOf(t)
       const text = pillText(nameOf(t), nameWidth)
@@ -1195,8 +1226,11 @@ export const register: Register = (on, options) => {
       const level = t.levels !== undefined && (
         <Select key={`level:${t.id}`} value={levelOf[t.id]!} options={levelsOf(t).map(v => ({ value: v }))} onSelect={(v: string) => pick($, t.id, t.command ?? t.id, v, t.fillsPrompt === true, t.id === 'advisor' ? advisorBlock : undefined)} />
       )
+      const full = descOf(t) ?? t.note
       return (
-        <Box key={`row:${t.id}`} columnGap={1} {...fit}>
+        <Box key={`row:${t.id}`} flexDirection="column" {...fit}>
+        <Box columnGap={1} {...fit}>
+          {full !== undefined && expander(`tool:${t.id}`, t.label)}
           <Box flexShrink={0} columnGap={1} hover={tipHover(t.id)}>
             {name}
             {dot as never}
@@ -1207,11 +1241,12 @@ export const register: Register = (on, options) => {
           </Box>
           <Box flexGrow={1} flexShrink={1} {...fit} hover={tipHover(t.id)}>
             <Text {...dim} wrap="truncate-end">
-              {descOf(t) ?? t.note ?? ''}
+              {full === undefined ? '' : shortDesc(full)}
             </Text>
           </Box>
-          {(descOf(t) ?? t.note) !== undefined && tipCard(t.id, `${t.label}: ${descOf(t) ?? t.note}${t.costs ? ' ($ spends model tokens)' : ''}`)}
           {actionsShown(t).map(o => tipCard(`option:${t.id}:${o.text}`, howRuns(o)))}
+        </Box>
+        {full !== undefined && detail(`tool:${t.id}`, `${full}${t.costs ? ' ($ spends model tokens)' : ''}`)}
         </Box>
       )
     }
@@ -1285,7 +1320,9 @@ export const register: Register = (on, options) => {
       const nameOf = (item: T) => (desk ? `/${label(item)}` : label(item))
       const nameWidth = Math.max(...items.map(i => nameOf(i).length))
       const lines = items.slice(top, top + shown).map((item, n) => (
-        <Box key={`${id}:line:${keyOf(item)}`} columnGap={1} {...fit}>
+        <Box key={`${id}:line:${keyOf(item)}`} flexDirection="column" {...fit}>
+        <Box columnGap={1} {...fit}>
+          {desc(item) !== '' ? expander(keyOf(item), label(item)) : null}
           {star !== undefined && (
             <Box flexShrink={0}>
               <Button key={`star:${star(item)}`} plain label={desk ? undefined : `star ${label(item)}`} onPress={() => void flipStar($, star(item))}>
@@ -1302,10 +1339,11 @@ export const register: Register = (on, options) => {
           </Box>
           <Box flexGrow={1} flexShrink={1} {...fit} hover={tipHover(keyOf(item))}>
             <Text {...dim} wrap="truncate-end">
-              {desc(item)}
+              {shortDesc(desc(item))}
             </Text>
           </Box>
-          {desc(item) !== '' && tipCard(keyOf(item), `${label(item)}: ${desc(item)}`)}
+        </Box>
+        {desc(item) !== '' && detail(keyOf(item), desc(item))}
         </Box>
       ))
       const cells = trackCells(shown)
