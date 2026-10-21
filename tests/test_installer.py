@@ -39,7 +39,7 @@ class UserScope(Base):
         self.assertIn("Bash(git push:*)", s["permissions"]["ask"])
         self.assertIs(s["enableAllProjectMcpServers"], False)
         self.assertNotIn("attribution", s)            # neutral profile
-        self.assertTrue((self.home / ".claude" / "skills" / "dual-model-review" / "SKILL.md").exists())
+        self.assertTrue((self.home / ".claude" / "skills" / "review" / "SKILL.md").exists())
         self.assertEqual(self.sb.git("config", "--global", "toolkit.profile"), "neutral")
         hp = self.sb.git("config", "--global", "core.hooksPath")
         self.assertTrue(hp.endswith("global/githooks"))
@@ -89,7 +89,7 @@ class UserScope(Base):
         self.assertEqual(json.loads((claude / "settings.json").read_text()), json.loads(before["settings.json"]))
         self.assertEqual((claude / "CLAUDE.md").read_text(), before["CLAUDE.md"])
         self.assertEqual(self.sb.git("config", "--global", "--list"), gitcfg)
-        self.assertFalse((claude / "skills" / "dual-model-review").exists())
+        self.assertFalse((claude / "skills" / "review").exists())
         self.assertEqual(self.plugins(), set())
         self.assertEqual(self.sb.fake_db()["markets"], {})
         self.assertFalse((claude / NAME).exists())

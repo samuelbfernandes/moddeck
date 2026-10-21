@@ -23,6 +23,7 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | filetree | no | git | no | no | command.run, session.start, tool.call, ui.render |
 | format-on-edit | no | none | no | no | command.run, session.start, tool.call |
 | long-run-ping | no | none | no | no | command.run, prompt.submit, session.start, tool.call, turn.complete |
+| method-review | no | none | no | no | command.run, session.start, tool.call |
 | moddeck | yes | git, pipx, uvx | no | yes | command.run, session.compact, session.measure, session.start, tool.call, turn.complete, turn.step, ui.render, ui.scroll |
 | model-picker | no | codex | no | yes | command.run, prompt.submit, session.end, session.start, tool.call, turn.complete, turn.step |
 | progress | no | none | no | no | agent.spawn, command.run, session.start, tool.call, turn.complete, turn.step, ui.render |
@@ -33,6 +34,7 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | review-cost | no | git | no | no | command.run, session.start, tool.call, ui.render |
 | scope-watch | no | none | no | no | command.run, session.start, tool.call |
 | secret-guard | no | none | no | no | command.run, prompt.submit, session.append, session.start, tool.call |
+| skill-router | no | none | no | no | command.run, prompt.submit, session.start |
 | skins | no | none | no | no | classic.SessionStart, command.run, config.set, engine.create, prompt.compose, session.append, session.measure, session.start, skins.markdown, tool.call, turn.complete, turn.start, ui.invalidate, ui.render |
 | ssh-connect | no | cmd, ssh | no | no | command.run, session.start |
 | staged-diff | no | git | no | no | command.run, session.start, ui.render |
@@ -41,6 +43,7 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | tldr | no | none | no | yes | command.run, session.end, session.start, turn.complete, ui.render |
 | ui-preview | yes | Rscript, shiny, streamlit | yes | no | command.run, session.end, session.start, ui.render |
 | usage-meter | no | none | no | no | command.run, prompt.submit, session.end, session.measure, session.start, turn.complete, turn.start, ui.render |
+| verify-before-done | no | none | no | no | command.run, prompt.submit, session.start, tool.call, turn.complete, turn.start |
 
 "Writes files" means the mod can write through Claude Code's file API (reflect does, only when you press Save).
 "Spends model tokens" means the mod can ask a model something itself (reflect: a small model once per correction; cache-guard: optional keep-warm pings; model-picker: only if you pick the subagent option).

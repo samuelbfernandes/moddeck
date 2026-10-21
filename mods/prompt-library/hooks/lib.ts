@@ -6,8 +6,8 @@ export const DEFAULT_MAX = 50
 
 export const STARTERS: PromptItem[] = [
   { name: 'explain', text: 'Explain this code step by step, then list anything risky or unclear' },
-  { name: 'tests', text: 'Write tests for the code I just changed; run them and fix failures' },
-  { name: 'review', text: 'Review my last change for bugs, edge cases and missing tests; do not edit anything' },
+  { name: 'tests', text: 'Write tests for the code I just changed and run them. If one fails, fix the code, not the test; if the test itself is wrong, say why before changing it. Report the real result.' },
+  { name: 'review', text: 'Use the review skill on my last change; do not edit anything' },
   { name: 'eda', text: 'Profile this dataset: shape, dtypes, missing values, duplicates, outliers; summarise in a table and suggest next steps' },
 ]
 

@@ -49,6 +49,9 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "scope-watch": set(),
     "error-inbox": set(),
     "concise": set(),
+    "method-review": set(),
+    "verify-before-done": set(),
+    "skill-router": set(),
     "tldr": set(),
     "skins": set(),   # hellosverre/claude-skins (MIT), vendored; its update check was removed
     "decision-log": set(),

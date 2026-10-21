@@ -16,7 +16,7 @@ first each session: it is that project's source of truth. A project may add to t
 5. **Never invent** citations, page numbers, equations, DOIs, versions, function signatures or capabilities. Every equation
    traces to a primary source with a verified page. Unsure or unable to check: write `UNVERIFIABLE` and say why.
 6. **Genetics, quantitative-genetics, statistical or method changes are never self-reviewed.** The implementer is never
-   its own reviewer: hand the change to the other model (see the `dual-model-review` skill). The reviewer is read-only
+   its own reviewer: hand the change to the other model (see the `review` skill). The reviewer is read-only
    and tries to falsify, not to agree. Tests green is required regardless of what any reviewer says.
 7. **Say what was and was not verified.** No claim of "works" without a run you can name. Do not overclaim novelty or
    capability.
@@ -50,4 +50,4 @@ Mods: command-guard (holds destructive commands, reports what would be lost), ca
 reflect, progress (/progress), filetree (/filetree), review-cost (shows the Codex review cost
 before a push), model-picker (/model-picker: suggests a better-fitting model), branch-janitor (/branch-janitor: offers to delete
 finished branches). Global git hooks reject AI trailers and staged agent files.
-Skills: `dual-model-review`, `agents-md-scaffold`.
+Skills: `review`, `plan-first`, `writing`, `agents-md-scaffold`.

@@ -4,7 +4,7 @@ Everything installs once (everywhere, or in one project) and then works in every
 they have something useful to say. "Tokens" means what the tool costs you in model usage; "none" means it runs on your
 computer only.
 
-## The thirty-two mods
+## The thirty-seven mods
 
 A mod is a small add-on that changes Claude Code's own screen or behaviour. Turn any of them off with
 `/plugin disable <name>` and back on with `/plugin enable <name>`.
@@ -30,7 +30,10 @@ A mod is a small add-on that changes Claude Code's own screen or behaviour. Turn
 | **big-file-guard** | When Claude reads a big csv, tsv, json or log (over 256 KB) it reads only the first 200 lines and says so. Calls that ask for a range are left alone. | A one-line note after the read. | none (it saves tokens) | The switch in the side bar, or `/big-file-guard [on\|off\|status]`. |
 | **repro-log** | Remembers the analysis commands that succeeded and the files changed. `/repro` writes a recipe (git commit, versions, seeds, runnable commands). Commands with secrets are dropped. | Nothing until you run `/repro`. | none | The switch in the side bar, or `/repro [status\|clear\|on\|off]`. |
 | **auto-test** | After a turn that changed code, runs the project's tests (pytest, npm test, cargo test, devtools::test, go test) and shows the result. Off until you switch it on. | A toast "passed" or "FAILED" and the failing tail. | none | The switch in the side bar, or `/auto-test [on\|off\|run\|status\|command <cmd>]`. |
-| **prompt-library** | Saved prompts per project, four to start. The side bar lists them; a click puts the text in the prompt box. | A Prompts list in the side bar. | none | `/prompts [list\|add name \| text\|remove\|rename\|use]`. |
+| **prompt-library** | One list of saved prompts for every project (a folder's older list seeds it once), four to start. The side bar lists them; a click puts the text in the prompt box. | A Prompts list in the side bar. | none | `/prompts [list\|add name \| text\|remove\|rename\|use]`. |
+| **skill-router** | A prompt that clearly asks for a toolkit skill (review, plan-first, writing, ahpcc, assess-plugin, agents-md-scaffold) gets one added line naming it. Local keyword rules, once per skill per session; slash commands and short replies get nothing. | Nothing on screen; the model loads the skill. | none (about 30 tokens on a matching prompt) | The `skill-router` switch in the moddeck side bar, or `/skill-router [on\|off\|status]`. |
+| **method-review** | Remembers method code Claude edited (a code file whose path holds blup, herit, selection, meiosis, variance and similar words; add or remove words with `/method-review add\|remove`). The first `git commit` or `git push` while any is unreviewed is held once; running it again goes ahead. A review (the `review` skill, `codex exec` or `codex review`, `dev/dual.sh`, or `/method-review reviewed`) clears the list. | A toast and a one-line reason when a commit or push is held. | none | The `method-review` switch in the side bar, or `/method-review [status\|on\|off\|reviewed\|add\|remove]`. |
+| **verify-before-done** | At the end of a turn that changed code and ran no test, check or build, a toast now and one reminder line with your next prompt: say what was and was not verified. Never blocks. | A toast. | none (about 40 tokens once per missed turn) | The `verify-before-done` switch in the side bar, or `/verify-before-done [on\|off\|status]`. |
 | **prompt-upgrade** | Turns a rough prompt into a great one before it is sent: up to three multiple-choice questions, a rewrite, then your prompt and the upgrade side by side. Nothing runs until you press Run. | A pane with a four-step tracker (Your prompt, Questions, Rewrite, Review). | one fast-model call and one rewrite call per upgrade | The `prompt-upgrade` switch in the moddeck side bar, or `/better <prompt>`, `/better on\|off`, `/better history`. |
 | **checkpoint** | Safety snapshots of the working tree kept as git refs (your branch, index and stash are never touched). Restoring asks first and shows what would be lost. | A dialog only on restore or drop. | none | `/checkpoint [name\|list\|diff\|restore\|drop]`. |
 | **long-run-ping** | A toast, a sound and a notification when a turn runs over 60 s or a command over 120 s. | The ping. | none | The switch in the side bar, or `/long-run-ping [on\|off\|status\|test]`. |
@@ -56,7 +59,9 @@ There is also Anthropic's built-in **You Should Know** mod (enabled by the insta
 
 | Skill | What it does |
 |---|---|
-| **dual-model-review** | When you change a model, equation or analysis, it makes a different model review the change read-only, trying to prove it wrong. Verdicts are PASS, FAIL or UNVERIFIABLE; the model that wrote the code never approves itself. |
+| **review** | Quick read-only review for ordinary code. For genetics, statistics, methods and equations a different model (Codex or a fresh read-only Claude) must review the change, trying to prove it wrong. Verdicts are PASS, FAIL or UNVERIFIABLE; the model that wrote the change never reviews it. | Findings with `file:line`, and what was not checked. |
+| **plan-first** | Before a big build: interviews you in rounds with a recommended default each, compares design options when a choice is open, writes `SPEC.md`, and hands off to a fresh session. | A spec file. |
+| **writing** | One skill for short writing: three graded versions (options), edit and detect (takes the AI tells out and keeps your voice; includes the patterns of the humanizer plugin, so that plugin is not needed), and rewrite in your voice. | The text, and a short what-changed list. |
 | **agents-md-scaffold** | Sets up a new project with an `AGENTS.md` (the rules Claude reads first), a decisions log and a review rubric. |
 
 A skill costs only its one-line description in each session until it is used.

@@ -13,7 +13,7 @@ If the project has an `AGENTS.md` or `README`, read it first: it is that project
 5. **Say what was and was not verified.** No claim that something works without a run you can name.
 6. **Ask when the request is ambiguous** instead of guessing. Keep diffs small and in the project's existing style.
 7. **Statistics, methods and algorithms deserve a second look**: for a change to a model, equation or analysis, point out
-   that it should be reviewed by another model or a person (the `dual-model-review` skill does this).
+   that it should be reviewed by another model or a person (the `review` skill does this).
 
 ## Automatic guards (already running; do not duplicate or bypass them)
 - `git push`: the hook refuses force-pushes and deletions and runs the project's tests (R `devtools::test()`, Rust
@@ -23,4 +23,4 @@ If the project has an `AGENTS.md` or `README`, read it first: it is that project
 
 ## Installed tools you can mention (do not re-propose)
 `/model-picker` (suggests a better-fitting model), `/branch-janitor` (offers to delete finished branches), `/keepwarm`,
-`/replay`, `/reflect`, `/progress`, `/filetree`. Skills: `dual-model-review`, `agents-md-scaffold`.
+`/replay`, `/reflect`, `/progress`, `/filetree`. Skills: `review`, `plan-first`, `writing`, `agents-md-scaffold`.

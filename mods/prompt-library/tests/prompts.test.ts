@@ -45,7 +45,7 @@ test('session.start registers the command and mirrors the four starters', async 
   await start($)
   expect(w.registered).toEqual(['prompts'])
   expect((w.state.get(ATOM) as Item[] | undefined)?.map(i => i.name)).toEqual(['explain', 'tests', 'review', 'eda'])
-  expect(w.store.has('items:/proj-a')).toBe(true)
+  expect(w.store.has('items')).toBe(true)
 })
 
 test('no args and list give a numbered list cut at 60 characters', async ($, on) => {
@@ -61,7 +61,7 @@ test('add saves, mirrors and persists; name is lowercased', async ($, on) => {
   const w = world(on)
   expect(await text($, 'add My-Prompt | do the thing | twice')).toBe('Prompts · saved "my-prompt"')
   expect((w.state.get(ATOM) as Item[] | undefined)?.at(-1)).toEqual({ name: 'my-prompt', text: 'do the thing | twice' })
-  expect((w.store.get('items:/proj-a') as Item[]).at(-1)?.name).toBe('my-prompt')
+  expect((w.store.get('items') as Item[]).at(-1)?.name).toBe('my-prompt')
   expect(await text($, 'list')).toContain('5. my-prompt')
 })
 
@@ -74,7 +74,7 @@ test('add validates name, text, separator and duplicates', async ($, on) => {
   expect(await text($, 'add fine | x'.padEnd(10) + 'y'.repeat(4001))).toContain('text is too long')
   expect(await text($, 'add explain | other')).toContain('already exists')
   expect(await text($, `add ${'a'.repeat(24)} | ok`)).toContain('saved')
-  expect(w.store.get('items:/proj-a')).toHaveLength(5)
+  expect(w.store.get('items')).toHaveLength(5)
 })
 
 test('4000 characters of text is accepted', async ($, on) => {
@@ -103,7 +103,7 @@ test('rename changes the name and validates', async ($, on) => {
 test('use puts the text in the box and sends nothing', async ($, on) => {
   const w = world(on)
   const out = await text($, 'use review')
-  expect(w.filled).toEqual(['Review my last change for bugs, edge cases and missing tests; do not edit anything'])
+  expect(w.filled).toEqual(['Use the review skill on my last change; do not edit anything'])
   expect(out).toContain('in the prompt box')
   expect(await text($, 'use nope')).toContain('no prompt named')
 })
@@ -123,18 +123,24 @@ test('starters are seeded once: removing all stays empty', async ($, on) => {
   expect(await text($, 'list')).toContain('none saved')
   await start($)
   expect(w.state.get(ATOM) as Item[] | undefined).toEqual([])
-  expect(w.store.get('items:/proj-a')).toEqual([])
+  expect(w.store.get('items')).toEqual([])
 })
 
-test('lists are per project', async ($, on) => {
+test('one list for every project; a folder\'s old list seeds it once', async ($, on) => {
   const w = world(on)
   await text($, 'add mine | a')
   w.cwd = '/proj-b'
   const b = await text($, 'list')
-  expect(b).not.toContain('mine')
-  expect(b).toContain('4 saved')
-  expect(w.store.has('items:/proj-b')).toBe(true)
-  expect(w.state.get(ATOM) as Item[] | undefined).toHaveLength(4)
+  expect(b).toContain('mine')
+  expect(b).toContain('5 saved')
+  expect(w.store.has('items:/proj-b')).toBe(false)
+})
+
+test('a folder\'s old list seeds the shared one the first time', async ($, on) => {
+  const w = world(on, { cwd: '/proj-c' })
+  w.store.set('items:/proj-c', [{ name: 'old', text: 'kept' }])
+  expect(await text($, 'list')).toContain('old')
+  expect(w.store.get('items')).toEqual([{ name: 'old', text: 'kept' }])
 })
 
 test('maxItems caps adds', { options: { maxItems: 5 } }, async ($, on) => {

@@ -88,6 +88,11 @@
       "description": "Pings you when a long model turn or a long Bash command ends, so you can look away: /long-run-ping [on|off|status|test]."
     },
     {
+      "name": "method-review",
+      "source": "./mods/method-review",
+      "description": "Notices when Claude edits method code (genetics, statistics, estimation, simulation) and holds the first git commit or push until a second model has reviewed it. Enforces the rule that the implementer is never its own reviewer."
+    },
+    {
       "name": "moddeck",
       "source": "./mods/moddeck",
       "description": "A side bar with a live Session box, a Side Question panel (/btw), every mod in grouped cards (a switch is the mod's name, green on and red off; click it to flip), the skills and saved prompts, and an update check."
@@ -138,6 +143,11 @@
       "description": "Keeps secrets (API keys, tokens, passwords, private keys) out of the model's context: hides them in tool output and asks before a typed prompt that contains one is sent."
     },
     {
+      "name": "skill-router",
+      "source": "./mods/skill-router",
+      "description": "Adds one line to a prompt that clearly matches a skill (review, plan-first, writing, ahpcc, assess-plugin, agents-md-scaffold), so the skill is used when the task calls for it. Local keyword match, no model call, once per skill per session."
+    },
+    {
       "name": "skins",
       "source": "./mods/skins",
       "description": "Skins for Claude Code: tool rows that open onto their input and answer, highlighted code, diff, table, math, Mermaid and shell cards, a usage band and fifteen colour themes. Pick one in the moddeck side bar or with /skin. By hellosverre (MIT), vendored without the update check and star ask."
@@ -176,6 +186,11 @@
       "name": "usage-meter",
       "source": "./mods/usage-meter",
       "description": "A quiet usage line above the prompt that appears only when context, a plan window or a dollar limit needs a look, and an optional limit (plan-window used/total, or dollars for API-key use) that asks before the next prompt instead of refusing. Type /usage-meter for a short report."
+    },
+    {
+      "name": "verify-before-done",
+      "source": "./mods/verify-before-done",
+      "description": "When a turn changed code and no test, check or build ran, you get a toast at once and Claude is reminded on your next prompt to say what was and was not verified. Never blocks."
     }
   ]
 }

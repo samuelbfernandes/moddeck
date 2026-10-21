@@ -203,7 +203,7 @@ test('every row draws from the data it is given, in order, above the tools', MOD
   await w.clock.advance(10)
   await $.tool.call({ tool: 'Read', file_path: '/work/src/a.ts' } as never)
   await $.tool.call({ tool: 'Read', file_path: '/work/src/b.ts' } as never)
-  await $.tool.call({ tool: 'Skill', skill: 'dual-model-review' } as never)
+  await $.tool.call({ tool: 'Skill', skill: 'review' } as never)
   await $.tool.call({ tool: 'mcp__github__search', query: 'x' } as never)
   await $.turn.complete({ answer: 'ok', durationMs: 2000, isAborted: false, turnId: 't1', reason: 'answer', usage: { model: 'm', input_tokens: 1200, output_tokens: 500, cache_read_input_tokens: 80_000, cache_creation_input_tokens: 10 } } as never)
   await w.clock.advance(10)
@@ -238,7 +238,7 @@ test('every row draws from the data it is given, in order, above the tools', MOD
   expect(shown).toContain('250 tok/s')
   expect(shown).toContain('✓ Read ×2') // activity
   expect(shown).toContain('✓ Skill')
-  expect(shown).toContain('Skills: dual-model-review')
+  expect(shown).toContain('Skills: review')
   expect(shown).toContain('MCP: github')
   expect(shown).toContain('Compactions: 1')
   expect(shown).toContain('3 CLAUDE.md · 2 rules · 2 MCP · 3 hooks · 2 plugins')

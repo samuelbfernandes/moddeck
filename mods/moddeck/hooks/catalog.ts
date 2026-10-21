@@ -104,6 +104,9 @@ export const TOOLS: Tool[] = [
     defaultLevel: 'noir',
   },
   { id: 'concise', label: 'concise', group: 'Prompt helpers', icon: '»', desc: 'Short, action-first replies', isSwitch: true, command: 'concise' },
+  { id: 'skill-router', label: 'skill-router', group: 'Prompt helpers', icon: '⇢', desc: 'Hints the matching skill on a prompt that clearly asks for it', isSwitch: true, command: 'skill-router' },
+  { id: 'method-review', label: 'method-review', group: 'Guards', icon: '⚗', desc: 'Holds a commit of method code until a second model reviewed it', isSwitch: true, command: 'method-review', options: [{ label: 'reviewed', text: '/method-review reviewed', run: true }] },
+  { id: 'verify-before-done', label: 'verify-before-done', group: 'Guards', icon: '✓', desc: 'Flags a turn that changed code and ran no test', isSwitch: true, command: 'verify-before-done' },
   // Each mod keeps its own on/off and answers /<command> on|off; the side bar only reads their state.
   { id: 'secret-guard', label: 'secret-guard', group: 'Guards', icon: '🔒', desc: 'Keeps secrets out of the context', isSwitch: true, command: 'secret-guard' },
   { id: 'data-guard', label: 'data-guard', group: 'Guards', icon: '▤', desc: 'Asks before data files are committed', isSwitch: true, command: 'data-guard' },
@@ -282,12 +285,11 @@ export const TOOLS: Tool[] = [
 export type Skill = { id: string; label: string; desc: string; text: string }
 
 export const SKILLS: Skill[] = [
-  { id: 'dual-model-review', label: 'dual-model-review', desc: 'A second model tries to prove a change wrong', text: 'Use the dual-model-review skill to review my last change' },
+  { id: 'review', label: 'review', desc: 'Quick review, or a second model for method changes', text: 'Use the review skill on my last change' },
+  { id: 'plan-first', label: 'plan-first', desc: 'Interviews you, picks a design, writes a spec', text: 'Use the plan-first skill: interview me before we build ' },
+  { id: 'writing', label: 'writing', desc: 'Three versions, edits, rewrites; removes AI tells', text: 'Use the writing skill: ' },
   { id: 'agents-md-scaffold', label: 'agents-md-scaffold', desc: 'Sets up AGENTS.md, a decisions log, a rubric', text: 'Use the agents-md-scaffold skill to set up AGENTS.md for this repo' },
-  { id: 'align', label: 'align', desc: 'Interviews you, writes a spec, hands off', text: 'Use the align skill: interview me before we build ' },
-  { id: 'burst', label: 'burst', desc: 'Three graded versions of a text or idea', text: 'Use the burst skill: three versions of ' },
   { id: 'assess-plugin', label: 'assess-plugin', desc: 'Checks a plugin before you install it', text: 'Use the assess-plugin skill to assess ' },
-  { id: 'no-ai-text', label: 'no-ai-text', desc: 'Edits AI tells out of a draft, keeps the voice', text: 'Use the no-ai-text skill on this draft: ' },
 ]
 
 /** Starred items first (in list order), then the rest; unknown stars are ignored. */

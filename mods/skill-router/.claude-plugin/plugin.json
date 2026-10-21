@@ -1,0 +1,7 @@
+{
+  "name": "skill-router",
+  "version": "0.1.0",
+  "description": "Adds one line to a prompt that clearly matches a skill (review, plan-first, writing, ahpcc, assess-plugin, agents-md-scaffold), so the skill is used when the task calls for it. Local keyword match, no model call, once per skill per session.",
+  "author": { "name": "Samuel Fernandes" },
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "method-review",
+  "version": "0.1.0",
+  "description": "Notices when Claude edits method code (genetics, statistics, estimation, simulation) and holds the first git commit or push until a second model has reviewed it. Enforces the rule that the implementer is never its own reviewer.",
+  "author": { "name": "Samuel Fernandes" },
+  "types": "./types/index.d.ts"
+}

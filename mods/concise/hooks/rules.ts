@@ -107,7 +107,7 @@ Never omit relevant items when completeness matters. This rule shapes presentati
 
 Forbidden openers: "Great question," "Let me...", "I'll...", "Sure!", "Looking at your...", "To answer your question..."
 
-Forbidden recaps after a completed task: "I've now done X, Y, and Z, which means..."
+Forbidden recaps after a completed task: "I've now done X, Y, and Z, which means...". Not a recap, always keep: one line saying what was verified (tests run, result) and what was not.
 
 Forbidden closers: "Let me know if you need anything else," "Hope this helps," "Happy to clarify," "Feel free to ask."
 

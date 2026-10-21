@@ -175,7 +175,7 @@ async function reopen($: Dollar, entry: UpgradeEntry): Promise<void> {
 }
 
 export const register: Register = (on, options) => {
-  const minWords = typeof options.minWords === 'number' && options.minWords >= 1 ? options.minWords : 4
+  const minWords = typeof options.minWords === 'number' && options.minWords >= 1 ? options.minWords : 12
 
   on('session.start', async ($, e, next) => {
     try {

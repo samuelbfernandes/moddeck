@@ -1,12 +1,12 @@
 {
   "name": "prompt-upgrade",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turns a rough prompt into a great one before it is sent: up to three multiple-choice questions, a rewrite, and the original beside the upgrade in a pane. Nothing runs until you press Run. /better <prompt>, /better on|off|history.",
   "author": { "name": "Samuel Fernandes" },
   "types": "./types/index.d.ts",
   "userConfig": {
     "questionModel": { "type": "string", "title": "Model that asks the questions", "description": "A fast model, one short call per upgrade.", "default": "haiku" },
     "rewriteModel": { "type": "string", "title": "Model that writes the upgrade", "description": "One call per upgrade.", "default": "sonnet" },
-    "minWords": { "type": "number", "title": "Shortest prompt taken in automatic mode", "description": "Shorter ones (\"yes\", \"keep going\") go straight through.", "default": 4, "min": 1 }
+    "minWords": { "type": "number", "title": "Shortest prompt taken in automatic mode", "description": "Shorter ones (\"yes\", \"keep going\") go straight through.", "default": 12, "min": 1 }
   }
 }
