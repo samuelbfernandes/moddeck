@@ -1,6 +1,6 @@
 ---
 name: agents-md-scaffold
-description: Bootstrap or audit a project's canonical AGENTS.md, gitignored CLAUDE.md pointer, commit-msg guard, decisions log and theory-review rubric, in the FernandesLab style. Use when starting a repo, or when a repo lacks AGENTS.md or its critical rules. Not for repos that already have a current AGENTS.md.
+description: Bootstrap, score or revise a project's canonical AGENTS.md (with its gitignored CLAUDE.md pointer, commit-msg guard, decisions log and theory-review rubric), in the FernandesLab style. Use when starting a repo, when a repo lacks AGENTS.md or its critical rules, when asked to audit/check/improve AGENTS.md or CLAUDE.md, or to save what this session learned into project instructions.
 ---
 
 # AGENTS.md scaffold
@@ -34,6 +34,29 @@ Critical rules present? (no AI attribution + hook; never commit CLAUDE.md/.claud
 never push failing tests; no invented citations; backward-compat contract if any; spec-before-code if used.) Dual-model
 section? Build & Test commands that actually run? Conventions? "Avoid" list? Locked-decisions table mirrored in
 docs/DECISIONS.md? Length under limit?
+
+## Mode: score (quality report before any edit)
+Find every instruction file: `find . \( -name AGENTS.md -o -name CLAUDE.md -o -name CLAUDE.local.md \) -not -path '*/node_modules/*'`.
+A CLAUDE.md that holds more than the pointer line is a finding: move its project rules into AGENTS.md.
+Score each AGENTS.md out of 100 and report it before proposing anything:
+
+| Criterion | Points | Full marks when |
+|---|---|---|
+| Commands | 20 | build, test gate, lint present and copy-paste ready |
+| Currency | 20 | every command runs and every path exists today (check them; do not guess) |
+| Architecture | 15 | where things live, entry points, how modules relate |
+| Critical rules | 15 | the audit checklist above is satisfied |
+| Gotchas | 15 | non-obvious quirks and their reason, not generic advice |
+| Concision | 15 | one line per idea, nothing the code already says, under ~220 lines |
+
+Grades: A 90+, B 70-89, C 50-69, D 30-49, F below 30. List the failing commands, dead paths and stale TODOs by line.
+
+## Mode: revise (save what this session learned)
+1. List what a future session would have needed: commands found or corrected, gotchas hit, test patterns that
+   worked, environment quirks. Skip one-off fixes and anything obvious from the code.
+2. Route each item: project rule → `AGENTS.md` (committed); personal preference → `CLAUDE.local.md` (gitignored);
+   user-wide → `~/.claude/CLAUDE.md`. Never put project rules in the CLAUDE.md pointer.
+3. Show each addition as a diff with a one-line "why", one line per idea, then apply only the ones approved.
 
 ## Template: AGENTS.md
 ```markdown

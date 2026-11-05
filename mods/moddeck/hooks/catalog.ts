@@ -288,7 +288,7 @@ export const SKILLS: Skill[] = [
   { id: 'review', label: 'review', desc: 'Quick review, or a second model for method changes', text: 'Use the review skill on my last change' },
   { id: 'plan-first', label: 'plan-first', desc: 'Interviews you, picks a design, writes a spec', text: 'Use the plan-first skill: interview me before we build ' },
   { id: 'writing', label: 'writing', desc: 'Three versions, edits, rewrites; removes AI tells', text: 'Use the writing skill: ' },
-  { id: 'agents-md-scaffold', label: 'agents-md-scaffold', desc: 'Sets up AGENTS.md, a decisions log, a rubric', text: 'Use the agents-md-scaffold skill to set up AGENTS.md for this repo' },
+  { id: 'agents-md-scaffold', label: 'agents-md-scaffold', desc: 'Sets up, scores or revises AGENTS.md', text: 'Use the agents-md-scaffold skill to set up AGENTS.md for this repo' },
   { id: 'assess-plugin', label: 'assess-plugin', desc: 'Checks a plugin before you install it', text: 'Use the assess-plugin skill to assess ' },
 ]
 
