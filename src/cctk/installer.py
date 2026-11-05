@@ -484,7 +484,10 @@ def revert_files(lay: Layout, st: dict, say: Callable[[str], None]) -> None:
         for n in sk["names"]:
             d = Path(sk["dir"]) / n
             src = lay.stage / "skills" / n
-            if d.is_dir():
+            if d.is_symlink():
+                # Another tool links its own copy here (for example ~/.agents/skills): not ours to delete.
+                say(f"   skill {n} is a link: left in place")
+            elif d.is_dir():
                 if src.is_dir() and _same_tree(src, d):
                     shutil.rmtree(d)
                     say(f"   removed skill {n}")
