@@ -75,7 +75,7 @@
     {
       "name": "external-agent",
       "source": "./mods/external-agent",
-      "description": "Ask another coding agent (Codex by default, or Claude Code) from Claude Code, read-only: /agent, /agent-review, and a tool Claude can call for a second opinion."
+      "description": "Delegate to another coding agent (Codex by default; Gemini CLI, Ollama or LM Studio models, or Claude Code) from Claude Code, sharing the same conversation: /agent, /agent-review, and a tool Claude can call like a sub-agent."
     },
     {
       "name": "filetree",

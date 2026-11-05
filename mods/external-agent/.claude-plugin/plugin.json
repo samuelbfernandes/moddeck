@@ -1,8 +1,17 @@
 {
   "name": "external-agent",
-  "version": "0.2.0",
-  "description": "Ask another coding agent (Codex by default, or Claude Code) from Claude Code, read-only: /agent, /agent-review, and a tool Claude can call for a second opinion.",
+  "version": "0.3.0",
+  "description": "Delegate to another coding agent (Codex by default; Gemini CLI, Ollama or LM Studio models, or Claude Code) from Claude Code, sharing the same conversation: /agent, /agent-review, and a tool Claude can call like a sub-agent.",
   "author": {
     "name": "Samuel Fernandes"
+  },
+  "userConfig": {
+    "apiKey": {
+      "type": "string",
+      "title": "API key (only for the API connection)",
+      "description": "Used only when the External Agent is set to connect through its API (off by default). Kept in secure storage. Agents on this machine never need it.",
+      "sensitive": true,
+      "default": ""
+    }
   }
 }

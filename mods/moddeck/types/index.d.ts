@@ -1,13 +1,19 @@
 /** One saved prompt, as prompt-library keeps it. */
 export type SavedPrompt = { name: string; text: string }
 /** An External Agent moddeck knows (hooks/agents.ts declares the same shapes; a contract cannot import). */
-export type AgentId = 'codex' | 'claude'
-export type AgentConfig = { agent: AgentId; model: string }
+export type AgentId = 'codex' | 'gemini' | 'ollama' | 'lmstudio' | 'claude'
+export type AgentConfig = { agent: AgentId; model: string; connection?: 'local' | 'api'; access?: 'edit' | 'read'; baseUrl?: string }
 export type Found = { isInstalled: boolean; version: string }
-/** The External Agent setup wizard: agent → sign-in → model → connection check. */
+/** The External Agent setup wizard: agent → connection → sign-in → model → connection check. */
 export type AgentWizard = {
-  step: 'agent' | 'signin' | 'model' | 'check'
+  step: 'agent' | 'connect' | 'signin' | 'model' | 'check'
   agent: AgentId
+  /** 'local' (the default): the agent's own program here; 'api': opt-in, answers only. */
+  connection: 'local' | 'api'
+  /** 'edit' (the default): it may edit files and run commands in the project; 'read': read only. */
+  access: 'edit' | 'read'
+  /** The API address typed for the API connection ('' = the agent's usual one). */
+  baseUrl: string
   /** What detection found per agent; absent = still checking. */
   found: Partial<Record<AgentId, Found>>
   /** Signed in on this machine (no API key needed); null = not checked yet. */

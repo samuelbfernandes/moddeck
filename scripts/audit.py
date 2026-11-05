@@ -24,7 +24,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "cache-guard": set(),
     "filetree": {"git"},
     "model-picker": {"codex"},                # offered as an option for review tasks, only if Codex is installed
-    "external-agent": {"codex", "claude", "git"},  # the chosen agent, read-only (codex sandbox / claude plan mode); git diff for a Claude Code review
+    "external-agent": {"codex", "claude", "gemini", "lms", "ollama", "git"},  # the agent the person chose (Codex runs Ollama/LM Studio models), each under its own sandbox; lms/ollama only list models; git diff for a review
     "reflect": set(),
     "edit-replay": set(),
     "review-cost": {"git"},
@@ -32,7 +32,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "secret-guard": set(),
     "usage-meter": set(),
     "diagram": set(),
-    "moddeck": {"git", "pipx", "uvx", "codex", "claude"},         # git: read-only for the Session box, and `git ls-remote --tags` for the update check; pipx/uvx: the installer's own one-liner, only after you answer "Update now"; codex/claude: the External Agent the person set up, read-only
+    "moddeck": {"git", "pipx", "uvx", "codex", "claude", "gemini", "lms", "ollama"},         # git: read-only for the Session box, and `git ls-remote --tags` for the update check; pipx/uvx: the installer's own one-liner, only after you answer "Update now"; codex/claude: the External Agent the person set up, read-only
     "data-guard": {"git"},
     "big-file-guard": set(),
     "repro-log": {"git", "python3", "node", "R"},          # only `--version` probes, for runtimes that appeared in the session
@@ -59,9 +59,9 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "format-on-edit": {"air", "ruff", "jarl", "prettier", "biome"},   # only when switched on, on the one file Claude just edited, if the tool is installed
     "ui-preview": {"Rscript", "npm", "shiny", "streamlit", "google-chrome", "chromium", "chromium-browser"},   # your app's own server, and a headless browser for a screenshot; only on /ui-preview start|shot
 }
-ALLOW_NETWORK: set[str] = {"moddeck", "ui-preview"}      # moddeck names the GitHub repo for `git ls-remote --tags` (the update check), it never calls $.http; ui-preview fetches only http://127.0.0.1 / localhost (refused in code otherwise)
+ALLOW_NETWORK: set[str] = {"moddeck", "ui-preview", "external-agent"}      # external-agent: only the opt-in API connection the person chose (off by default), to the address they set; moddeck names the GitHub repo for `git ls-remote --tags` (the update check), it never calls $.http; ui-preview fetches only http://127.0.0.1 / localhost (refused in code otherwise)
 NEVER_PROGRAMS = {"curl", "wget", "ssh", "scp", "nc", "ncat", "telnet", "sudo", "powershell", "pwsh", "bash", "sh", "zsh", "cmd", "python", "python3", "node", "npm", "npx", "pip", "rm", "mv", "chmod"}
-KNOWN_PROGRAMS = {"git", "gh", "codex", "claude", "du", "find", "pipx", "uvx", "air", "ruff", "jarl", "prettier", "biome", "Rscript", "R", "shiny", "streamlit", "google-chrome", "chromium", "chromium-browser"} | NEVER_PROGRAMS
+KNOWN_PROGRAMS = {"git", "gh", "codex", "claude", "gemini", "lms", "ollama", "du", "find", "pipx", "uvx", "air", "ruff", "jarl", "prettier", "biome", "Rscript", "R", "shiny", "streamlit", "google-chrome", "chromium", "chromium-browser"} | NEVER_PROGRAMS
 
 NETWORK_RE = re.compile(r"\$\.http\b|\.http\.fetch|\bfetch\s*\(|XMLHttpRequest|WebSocket|https?://(?!www\.w3\.org/)")  # an XML namespace name (xmlns="http://www.w3.org/2000/svg") is not a request
 DYNAMIC_RE = re.compile(r"\beval\s*\(|new\s+Function\s*\(|\bimport\s*\(|\brequire\s*\(|child_process")
