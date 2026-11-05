@@ -162,7 +162,7 @@ Then try any of these:
 - **branch-janitor**: merge a finished branch into `main`, then send any prompt. It offers to delete the branch.
 - **usage-meter**: type `/usage-meter 80`, then `/usage-meter` for the report.
 - **diagram**: ask for `a mermaid flowchart of a GBLUP analysis`, then type `/diagram`.
-- **Side Question**: type `/btw what is REML?`. The answer appears in the side bar, not in the chat.
+- **Side Question**: type `/side what is REML?`. The answer appears in the side bar, not in the chat.
 - **Git guards**: run `echo KEY=1 > .env && git add .env && git commit -m test`. The commit is refused.
 
 Each mod's own README (`mods/<name>/README.md`) has its settings and limits.

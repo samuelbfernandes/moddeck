@@ -12,7 +12,7 @@ pages it cites were re-read on 2026-10-12 for pricing and caching). Nothing here
 | 17 | Infinite exploration | `big-file-guard` (partly) |
 | 18 | Never checking usage | `usage-meter`, moddeck Session box |
 | 23 | No model routing | `model-picker` |
-| 4 | Side questions in the main chat | built-in `/btw`; moddeck's own `/btw` panel shows the answer in the side bar (`aside` was dropped) |
+| 4 | Side questions in the main chat | built-in `/btw`; moddeck's own `/side` panel shows the answer in the side bar (`aside` was dropped) |
 
 ## Worth building (ranked)
 1. **prompt-lint** (#6, #7, #11): a local, zero-token check on the typed prompt. One quiet line, never a block: "one short

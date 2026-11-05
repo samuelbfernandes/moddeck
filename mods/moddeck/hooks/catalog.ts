@@ -330,8 +330,18 @@ export const toggleStar = (starred: readonly string[], id: string): string[] => 
 export const MAX_LIST_ROWS = 30
 export const listRowsOf = (picked: Record<string, number>, id: string, fallback: number): number => Math.max(MIN_LIST_ROWS, Math.min(MAX_LIST_ROWS, Math.floor(picked[id] ?? fallback)))
 
-/** One installed skill as the engine lists it: its name and, when a slash command carries it, that command's line. */
-export type InstalledSkill = { name: string; desc?: string }
+/** One installed skill as the engine lists it: its name and, when a slash command carries it, that command's line. `slash`: only runnable as `/name` (the model cannot invoke it), so its row inserts the slash command. */
+export type InstalledSkill = { name: string; desc?: string; slash?: boolean }
+
+/** The toolkit's own mods register slash commands too (switches, `/btw`); those are not skills. */
+const OWN_MODS = new Set(['moddeck', 'prompt-library', ...TOOLS.map(t => t.id)])
+
+/** Slash-only skills and plugin/user commands the context listing leaves out (it holds only skills the model may invoke). */
+export function slashOnly(cmds: readonly { name: string; description: string; source: string; plugin?: string }[], listed: ReadonlySet<string>): InstalledSkill[] {
+  return cmds
+    .filter(c => (c.source === 'user' || c.source === 'plugin') && !listed.has(c.name) && !OWN_MODS.has((c.plugin ?? '').split('@')[0]))
+    .map(c => ({ name: c.name, desc: c.description, slash: true }))
+}
 
 /** The toolkit's own skills first, then every other installed skill by name; a plugin skill `plug:name` keeps its prefix. */
 export function allSkills(installed: readonly InstalledSkill[]): Skill[] {
@@ -342,7 +352,7 @@ export function allSkills(installed: readonly InstalledSkill[]): Skill[] {
     const name = k.name.trim()
     if (name === '' || own.has(name) || own.has(name.split(':').pop() ?? '') || seen.has(name)) continue
     seen.add(name)
-    rest.push({ id: name, label: name, desc: (k.desc ?? '').replace(/\s+/g, ' ').trim(), text: `Use the ${name} skill ` })
+    rest.push({ id: name, label: name, desc: (k.desc ?? '').replace(/\s+/g, ' ').trim(), text: k.slash ? `/${name} ` : `Use the ${name} skill ` })
   }
   rest.sort((a, b) => a.label.localeCompare(b.label))
   return [...SKILLS, ...rest]

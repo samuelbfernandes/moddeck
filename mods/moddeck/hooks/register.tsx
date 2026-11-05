@@ -7,7 +7,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { BtwEntry } from '../types'
 import { INSTRUCTION, addEntry, buildPrompt, cutAnswer, digest, fallbackPrompt, footer, headline, isRunning, maxCharsOf, nextId, patchEntry, tokensOf, whyNot } from './btw'
-import { GROUPS, MAX_LIST_ROWS, MIN_LIST_ROWS, TOOLS, allSkills, listRowsOf, listSize, priced, rankTools, searchFirst, shortDesc, splitCommand, starFirst, toggleStar } from './catalog'
+import { GROUPS, MAX_LIST_ROWS, MIN_LIST_ROWS, TOOLS, allSkills, listRowsOf, listSize, priced, rankTools, searchFirst, shortDesc, slashOnly, splitCommand, starFirst, toggleStar } from './catalog'
 import type { Action, InstalledSkill, Option, SavedPrompt, Tool } from './catalog'
 import { CARD_CHROME, barTarget, listAt, pillText, scrollBar, stepTop, trackCells } from './layout'
 import type { BottomList } from './layout'
@@ -63,7 +63,7 @@ const tops = atom({ plugin: 'moddeck', key: 'tops' } as const, {} as Record<stri
 /** The updateCheck setting, set once by `register` (the open path in `toggle` reads it). */
 let updateCheckOn = true
 /** The Side Question panel: the last few side questions and answers, newest first (in memory only). */
-/** The Side Question panel: collapsed to one button until clicked (or until /btw is used). */
+/** The Side Question panel: collapsed to one button until clicked (or until /side is used). */
 const btwOpen = atom({ plugin: 'moddeck', key: 'btwOpen' } as const, false)
 const btwList = atom({ plugin: 'moddeck', key: 'btw' } as const, [] as BtwEntry[])
 /** What the Ask here field holds: kept as it is typed, emptied after asking and by ✕ close. */
@@ -150,11 +150,12 @@ async function readSkills($: Dollar): Promise<void> {
 }
 async function readSkillsNow($: Dollar): Promise<void> {
   const u = await attempt(() => $.session.usage({ breakdown: 'summary' }))
-  const listed = u?.context.breakdown?.skills?.skillFrontmatter
-  if (!listed) return void (await safe(() => update($, installed, () => []))) // nothing to list: stop asking at every drawing
+  const listed = u?.context.breakdown?.skills?.skillFrontmatter ?? []
   const cmds = (await attempt(() => $.command.list())) ?? []
   const descOf = new Map(cmds.map(c => [c.name, c.description]))
-  await safe(() => update($, installed, () => listed.map(k => ({ name: k.name, desc: descOf.get(k.name) }))))
+  const own = listed.map(k => ({ name: k.name, desc: descOf.get(k.name) }))
+  // empty result still stops asking at every drawing
+  await safe(() => update($, installed, () => [...own, ...slashOnly(cmds, new Set(listed.map(k => k.name)))]))
 }
 /** Where the last drawing put the pane's window and its lists, for the wheel (`ui.scroll`); a fresh load starts empty. */
 let paneOffset = 0
@@ -201,7 +202,7 @@ const BAND_HIDDEN = { plugin: 'progress', key: 'isHidden' } as const
 
 const HELP = [
   'Moddeck · /moddeck shows or hides the side bar',
-  '/moddeck update checks for a newer release · /btw <question> asks in the side bar',
+  '/moddeck update checks for a newer release · /side <question> asks in the side bar',
   `/moddeck rows list · hide <id> · show <id> · compact · expanded`,
   '/moddeck theme light · dark (the side bar colours in the desktop app)',
   `ids: ${ROW_IDS.join(', ')}`,
@@ -362,7 +363,7 @@ async function toggle($: Dollar): Promise<string> {
 }
 
 // ---- Side Question: a side question answered over the cached context, shown in the side bar and never added to the chat -------
-/** Opens the side bar if it is not up (a /btw typed with it closed brings it), without taking over its auto-open. */
+/** Opens the side bar if it is not up (a /side typed with it closed brings it), without taking over its auto-open. */
 async function ensurePane($: Dollar): Promise<boolean> {
   if (await isPaneOpen($)) return true
   await update($, autoOpen, () => 'done')
@@ -375,7 +376,7 @@ async function askBtw($: Dollar, maxChars: number, text: string): Promise<string
   if (question === '') {
     await safe(() => update($, btwOpen, () => true))
     await ensurePane($)
-    return 'Side Question · type it in the box at the bottom of the side bar, or /btw <question>'
+    return 'Side Question · type it in the box at the bottom of the side bar, or /side <question>'
   }
   const now = await $.clock.now()
   if (isRunning(await read($, btwList), now)) return 'Side Question · one is still thinking'
@@ -808,7 +809,7 @@ export const register: Register = (on, options) => {
       // the side bar can still be opened another way
     }
     try {
-      await $.command.register({ name: 'btw', description: 'Ask a side question in the moddeck side bar; the answer is not added to the conversation: /btw <question>', argumentHint: '<question>', immediate: true })
+      await $.command.register({ name: 'side', description: 'Ask a side question in the moddeck side bar; the answer is not added to the conversation: /side <question>', argumentHint: '<question>', immediate: true })
     } catch {
       // without it the box at the bottom of the side bar still takes questions
     }
@@ -828,7 +829,7 @@ export const register: Register = (on, options) => {
     return { text: HELP }
   }).catch(() => ({ text: FAILED }))
 
-  on('command.run', { command: 'btw' }, async ($, e) => ({ text: await askBtw($, btwMax, String((e as { args?: unknown }).args ?? '')) })).catch(() => ({ text: 'Side Question · could not ask' }))
+  on('command.run', { command: 'side' }, async ($, e) => ({ text: await askBtw($, btwMax, String((e as { args?: unknown }).args ?? '')) })).catch(() => ({ text: 'Side Question · could not ask' }))
 
   // ---- observers for the Session box: each lets the event through first (or, for a step, before it), and only keeps books ----
   on('session.measure', async ($, e, next) => {
@@ -1074,7 +1075,7 @@ export const register: Register = (on, options) => {
             <Input key="btw:input" placeholder="Ask here" submitLabel="ask" value={draft} onInput={(v: string) => void update($, btwDraft, () => v)} onSubmit={(v: string) => ask(v)} />
           ) : (
             <Text {...dim} wrap="truncate-end">
-              type /btw your question
+              type /side your question
             </Text>
           )}
         </Box>
