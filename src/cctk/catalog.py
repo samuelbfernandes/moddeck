@@ -60,7 +60,7 @@ class Detected:
 RENAMED: dict[str, str] = {
     "savvy-progress": "progress", "blast-radius": "command-guard", "budget-guard": "usage-meter", "cache-tax": "cache-guard",
     "replay-theater": "edit-replay", "color-lab": "contrast-check", "csv-table": "table-preview", "staged-review": "staged-diff",
-    "suggest-model": "model-picker",
+    "suggest-model": "model-picker", "codex-bridge": "external-agent",
 }
 
 
@@ -76,7 +76,7 @@ MOD_META: dict[str, tuple[str, str, bool]] = {
     "branch-janitor": ("none", "", True),
     "cache-guard": ("none (keep-warm pings are optional)", "", True),
     "review-cost": ("none (only estimates)", "codex", True),
-    "codex-bridge": ("Codex quota per call; the answer adds to Claude's context", "codex", False),
+    "external-agent": ("the chosen agent's quota per question (Codex or Claude Code); an answer reaches Claude only if you insert it", "codex", False),
     "reflect": ("small: a corrected prompt goes once to a small model", "", False),
     "progress": ("none", "", False),
     "filetree": ("none", "", False),

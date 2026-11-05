@@ -12,7 +12,6 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | branch-janitor | no | gh, git | no | no | command.run, prompt.submit, session.start, tool.call |
 | cache-guard | no | none | no | yes | classic.SessionStart, command.run, model.fork, prompt.submit, session.end, session.start, turn.complete, turn.start, turn.step |
 | checkpoint | no | cmd, git, rm | no | no | command.run, prompt.submit, session.start |
-| codex-bridge | no | codex | no | no | command.run, session.start, tool.call |
 | command-guard | no | du, find, git | no | no | command.run, session.start, tool.call |
 | concise | no | none | no | no | command.run, prompt.submit, session.compact, session.start |
 | contrast-check | no | none | no | no | command.run, session.start, ui.render |
@@ -21,11 +20,12 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | diagram | no | none | no | no | command.run, session.end, session.start, turn.complete, ui.render |
 | edit-replay | no | none | no | no | command.run, prompt.submit, session.end, session.start, tool.call, turn.complete, turn.start, ui.render |
 | error-inbox | no | none | no | no | command.run, session.start, tool.call, ui.render |
+| external-agent | no | claude, codex, git | no | no | command.run, session.start, tool.call |
 | filetree | no | git | no | no | command.run, session.start, tool.call, ui.render |
 | format-on-edit | no | none | no | no | command.run, session.start, tool.call |
 | long-run-ping | no | none | no | no | command.run, prompt.submit, session.start, tool.call, turn.complete |
 | method-review | no | none | no | no | command.run, session.start, tool.call |
-| moddeck | yes | git, pipx, uvx | no | yes | command.run, session.compact, session.measure, session.start, tool.call, turn.complete, turn.step, ui.render, ui.scroll |
+| moddeck | yes | claude, codex, git, pipx, uvx | no | yes | command.run, session.compact, session.measure, session.start, tool.call, turn.complete, turn.step, ui.render, ui.scroll |
 | model-picker | no | codex | no | yes | command.run, prompt.submit, session.end, session.start, tool.call, turn.complete, turn.step |
 | progress | no | none | no | no | agent.spawn, command.run, session.start, tool.call, turn.complete, turn.step, ui.render |
 | prompt-library | no | none | no | no | command.run, session.start |

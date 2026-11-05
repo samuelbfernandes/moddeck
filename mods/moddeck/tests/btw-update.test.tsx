@@ -10,7 +10,7 @@ const FULLSCREEN = { columns: 120, rows: 40, isFullscreen: true } as const
 const USAGE = { input_tokens: 400, output_tokens: 600, cache_read_input_tokens: 11_000, cache_creation_input_tokens: 0 }
 const TAGS = 'aaa\trefs/tags/v0.3.0\nbbb\trefs/tags/v0.4.1\nccc\trefs/tags/v0.10.0\nddd\trefs/tags/v0.11.0-rc1\neee\trefs/tags/nightly\n'
 
-function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; runner?: string; installExit?: number } = {}) {
+function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; runner?: string; installExit?: number; agentRun?: (argv: string[], stdin?: string) => unknown } = {}) {
   const store = new Map<string, unknown>()
   const w = {
     store,
@@ -32,6 +32,8 @@ function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; run
   on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
   on('process.run', (_$, e) => {
     w.ran.push([...e.argv])
+    const agent = o.agentRun?.([...e.argv], e.init?.stdin)
+    if (agent !== undefined) return { value: agent } as never
     const [bin, a] = e.argv
     if (bin === 'git' && a === 'ls-remote') return { value: { exitCode: o.lsExit ?? 0, stdout: o.tags ?? TAGS, stderr: '' } } as never
     if (bin === 'git') return { value: { exitCode: 128, stdout: '', stderr: 'not a repository' } } as never
@@ -244,61 +246,110 @@ test('the Ask here field is always beside the title; Enter asks; the title expla
   expect(JSON.stringify(await pane.find({ key: 'btw:input' }))).toContain('"value":""') // ✕ close leaves a fresh field
 })
 
-// ---- the Codex box -----------------------------------------------------------------------------------------------------------
-test('with codex-bridge, a Codex box sits under Side Question; a question goes to its tool and the answer shows there only', {}, async ($, on) => {
-  const w = world(on)
-  const calls: { prompt: unknown; mode: unknown }[] = []
-  on('tool.list', () => ({ value: [{ name: 'mcp__codex-bridge__ask' }] as never }))
-  on('tool.call', { tool: 'mcp__codex-bridge__ask' }, (_, e) => {
-    calls.push({ prompt: (e as { prompt?: unknown }).prompt, mode: (e as { mode?: unknown }).mode })
-    return { result: 'Use a mixed model.' } as never
-  })
+// ---- the External Agent box and its setup wizard ------------------------------------------------------------------------------
+const MODELS = JSON.stringify({ models: [{ slug: 'gpt-a', visibility: 'list' }, { slug: 'gpt-b', visibility: 'list' }, { slug: 'secret', visibility: 'hide' }] })
+type Ran = { argv: string[]; stdin?: string }
+/** A machine with Codex installed and signed in (unless told otherwise) and no Claude Code. */
+function agentMachine(o: { signedIn?: boolean; reply?: (stdin: string) => string } = {}) {
+  const ran: Ran[] = []
+  let signedIn = o.signedIn ?? true
+  const res = (stdout: string, exitCode = 0) => ({ exitCode, stdout, stderr: exitCode ? 'failed' : '' })
+  const agentRun = (argv: string[], stdin?: string) => {
+    if (argv[0] !== 'codex' && argv[0] !== 'claude') return undefined
+    ran.push({ argv, stdin })
+    if (argv[0] === 'claude') throw new Error('not found')
+    if (argv[1] === '--version') return res('codex-cli 0.162.0')
+    if (argv[1] === 'login' && argv[2] === 'status') return signedIn ? res('Logged in using ChatGPT') : res('Not logged in', 1)
+    if (argv[1] === 'login' && argv[2] === '--with-api-key') return (signedIn = stdin === 'sk-test'), res('ok', signedIn ? 0 : 1)
+    if (argv[1] === 'debug') return res(MODELS)
+    return res((o.reply ?? (q => (/one word: ok/.test(q) ? 'ok' : `answer to: ${q}`)))(stdin ?? ''))
+  }
+  return { ran, agentRun }
+}
+const keys = async (pane: any) => (await pane.findAll({ type: 'Button' })).map((b: { key?: string }) => b.key ?? '')
+
+test('first open: the wizard finds Codex, needs no API key, lists models, checks the connection, then the chat works', {}, async ($, on) => {
+  const m = agentMachine()
+  const w = world(on, { agentRun: m.agentRun })
   await start($)
   await w.clock.advance(5)
   const pane = await mount($)
-  const shown = await texts(pane)
-  expect(shown.indexOf('Codex $')).toBeGreaterThan(shown.indexOf('Side Question'))
-  await pane.input({ key: 'codex:input', text: 'which model?', kind: 'submit' })
+  let shown = await texts(pane)
+  expect(shown.indexOf('External Agent')).toBeGreaterThan(shown.indexOf('Side Question'))
+  expect(shown).toContain('Which agent should Claude connect to?')
+  expect(shown).toContain('● Codex (OpenAI) (default) · installed · codex-cli 0.162.0')
+  expect(shown).toContain('○ Claude Code · not found on this machine')
+  await pane.press({ key: 'agent:pick:codex' })
   await w.clock.advance(5)
-  expect(calls).toEqual([{ prompt: 'which model?', mode: 'ask' }])
-  const after = await texts(pane)
-  expect(after).toContain('› which model?')
-  expect(after).toContain('Use a mixed model.')
-  expect(after).toContain('Codex · not added to the conversation')
-  await pane.press({ key: 'codex:review' })
+  shown = await texts(pane)
+  expect(shown).toContain('no API key needed')
+  expect(shown).toContain('gpt-a')
+  expect(shown).not.toContain('secret')
+  await pane.press({ key: 'agent:model:gpt-b' })
+  await pane.press({ key: 'agent:next' })
   await w.clock.advance(5)
-  expect(calls[1]).toEqual({ prompt: '', mode: 'review' })
+  expect(await texts(pane)).toContain('✓ Connected')
+  await pane.press({ key: 'agent:finish' })
+  expect(w.store.get('agent')).toEqual({ agent: 'codex', model: 'gpt-b' })
+  shown = await texts(pane)
+  expect(shown).not.toContain('Setup · step')
+  expect(shown).toContain('model: gpt-b ▾')
+  await pane.input({ key: 'agent:input', text: 'which test?', kind: 'submit' })
+  await w.clock.advance(5)
+  const asked = m.ran.find(r => r.stdin === 'which test?')!
+  expect(asked.argv).toContain('read-only')
+  expect(asked.argv.join(' ')).toContain('-m gpt-b')
+  expect(asked.argv.join(' ')).not.toContain('which test') // never an argument
+  shown = await texts(pane)
+  expect(shown).toContain('answer to: which test?')
+  expect(shown).toContain('Codex (OpenAI) · not added to the conversation')
+  expect(m.ran.some(r => r.argv.includes('--with-api-key'))).toBe(false) // no key was ever asked for
 })
 
-test('a long Codex answer stops at 12 lines until "more"; a failure shows its reason', {}, async ($, on) => {
-  const w = world(on)
-  const long = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join('\n')
-  let reply: unknown = { result: long }
-  on('tool.list', () => ({ value: [{ name: 'mcp__codex-bridge__ask' }] as never }))
-  on('tool.call', { tool: 'mcp__codex-bridge__ask' }, () => reply as never)
+test('an agent that is not signed in asks for a key, hands it to its own login, and keeps nothing', {}, async ($, on) => {
+  const m = agentMachine({ signedIn: false })
+  const w = world(on, { agentRun: m.agentRun })
   await start($)
   await w.clock.advance(5)
   const pane = await mount($)
+  await pane.press({ key: 'agent:pick:codex' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('not signed in')
+  await pane.input({ key: 'agent:key', text: 'sk-test', kind: 'change' })
+  await pane.input({ key: 'agent:key', text: 'sk-test', kind: 'submit' })
+  await w.clock.advance(10)
+  expect(m.ran.find(r => r.argv.includes('--with-api-key'))?.stdin).toBe('sk-test')
+  expect(m.ran.every(r => !r.argv.join(' ').includes('sk-test'))).toBe(true) // the key is never an argument
+  expect(JSON.stringify(await pane.find({ key: 'agent:key' }) ?? {})).not.toContain('sk-test')
+  expect([...w.store.values()].some(v => JSON.stringify(v).includes('sk-test'))).toBe(false)
+  expect(await texts(pane)).toContain('no API key needed') // signed in now: on to the model
+})
+
+test('a saved agent opens the chat directly; ⚙ change reopens the wizard; long answers fold; failures show why', {}, async ($, on) => {
+  const long = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join('\n')
+  let reply = long
+  const m = agentMachine({ reply: () => reply })
+  const w = world(on, { agentRun: m.agentRun })
+  w.store.set('agent', { agent: 'codex', model: 'gpt-a' })
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  expect(await texts(pane)).not.toContain('Setup · step')
   expect(await texts(pane)).toContain('cannot edit it')
-  await pane.input({ key: 'codex:input', text: 'long?', kind: 'submit' })
+  await pane.input({ key: 'agent:input', text: 'long?', kind: 'submit' })
   await w.clock.advance(5)
   expect(await texts(pane)).toContain('line 12')
   expect(await texts(pane)).not.toContain('line 13')
-  const more = (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).find(k => k?.startsWith('codex:more:'))!
-  await pane.press({ key: more })
+  await pane.press({ key: (await keys(pane)).find((k: string) => k.startsWith('agent:more:'))! })
   expect(await texts(pane)).toContain('line 20')
-  reply = { result: 'Codex failed (exit 1): not logged in', isError: true }
-  await pane.input({ key: 'codex:input', text: 'again', kind: 'submit' })
+  await pane.press({ key: 'agent:setup' })
+  expect(await texts(pane)).toContain('Setup · step 1 of 4')
+  await pane.press({ key: 'agent:cancel' })
+  expect(await texts(pane)).not.toContain('Setup · step')
+  reply = ''
+  await pane.input({ key: 'agent:input', text: 'empty?', kind: 'submit' })
   await w.clock.advance(5)
-  expect(await texts(pane)).toContain('not logged in')
-})
-
-test('without codex-bridge there is no Codex box', {}, async ($, on) => {
-  const w = world(on)
-  on('tool.list', () => ({ value: [] as never }))
-  await start($)
-  await w.clock.advance(5)
-  expect(await (await mount($)).find({ key: 'codex' })).toBeUndefined()
+  expect(await texts(pane)).toContain('returned no text')
 })
 
 test('a failed or empty answer says why and changes nothing else', {}, async ($, on) => {

@@ -1,5 +1,27 @@
 /** One saved prompt, as prompt-library keeps it. */
 export type SavedPrompt = { name: string; text: string }
+/** An External Agent moddeck knows (hooks/agents.ts declares the same shapes; a contract cannot import). */
+export type AgentId = 'codex' | 'claude'
+export type AgentConfig = { agent: AgentId; model: string }
+export type Found = { isInstalled: boolean; version: string }
+/** The External Agent setup wizard: agent → sign-in → model → connection check. */
+export type AgentWizard = {
+  step: 'agent' | 'signin' | 'model' | 'check'
+  agent: AgentId
+  /** What detection found per agent; absent = still checking. */
+  found: Partial<Record<AgentId, Found>>
+  /** Signed in on this machine (no API key needed); null = not checked yet. */
+  signedIn: boolean | null
+  models: string[]
+  /** The model picked; '' = the agent's own default. */
+  model: string
+  /** What is running now ('' = nothing). */
+  busy: string
+  /** The last result or problem to show. */
+  note: string
+  /** The connection check passed. */
+  isOk: boolean
+}
 /** One side question in the Side Question panel. */
 export type BtwEntry = { id: number; at: number; question: string; status: 'thinking' | 'done' | 'failed'; answer: string; isCut: boolean; tokens: number | null; note: string }
 /** The automatic open of the side bar, once per session. */
@@ -83,16 +105,20 @@ declare module 'claude-code' {
       listQuery: Record<string, string>
       /** The text in the Side Question's Ask here field, emptied after asking and by ✕ close. */
       btwDraft: string
-      /** The Codex box's last questions and answers, newest first (in memory only), asked through the codex-bridge mod. */
-      codex: BtwEntry[]
-      /** The Codex box is expanded. */
-      codexOpen: boolean
-      /** The text in the Codex box's field. */
-      codexDraft: string
-      /** The codex-bridge tool is available in this session; null = not checked yet. */
-      codexReady: boolean | null
-      /** Ids of Codex answers shown in full (the others are clamped to 12 lines). */
-      codexFull: number[]
+      /** The External Agent the setup wizard saved (also in the store as `agent`); null = not set up yet. The external-agent mod reads it. */
+      agent: AgentConfig | null
+      /** The setup wizard while it is open; null = closed. */
+      agentWiz: AgentWizard | null
+      /** The wizard's API key field: in memory only, emptied as soon as it is handed to the agent's own login. */
+      agentKey: string
+      /** The External Agent box's answers are shown. */
+      agentOpen: boolean
+      /** The External Agent box's last questions and answers, newest first (in memory only); `note` holds the agent's name. */
+      agentChat: BtwEntry[]
+      /** The text in the External Agent box's field. */
+      agentDraft: string
+      /** Ids of answers shown in full (the others are clamped to 12 lines). */
+      agentFull: number[]
       /** Lines each list shows (`skills`, `prompts`), as its more/fewer buttons set it (also kept in the store); null = not loaded. */
       listRows: Record<string, number> | null
       /** Starred skill ids, drawn at the top of the Skills box (also kept in the store); null = not loaded. */

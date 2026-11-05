@@ -1,0 +1,8 @@
+{
+  "name": "external-agent",
+  "version": "0.2.0",
+  "description": "Ask another coding agent (Codex by default, or Claude Code) from Claude Code, read-only: /agent, /agent-review, and a tool Claude can call for a second opinion.",
+  "author": {
+    "name": "Samuel Fernandes"
+  }
+}

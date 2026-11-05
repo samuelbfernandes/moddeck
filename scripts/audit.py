@@ -24,7 +24,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "cache-guard": set(),
     "filetree": {"git"},
     "model-picker": {"codex"},                # offered as an option for review tasks, only if Codex is installed
-    "codex-bridge": {"codex"},                # `codex exec`, read-only and ephemeral, only when the person or Claude asks
+    "external-agent": {"codex", "claude", "git"},  # the chosen agent, read-only (codex sandbox / claude plan mode); git diff for a Claude Code review
     "reflect": set(),
     "edit-replay": set(),
     "review-cost": {"git"},
@@ -32,7 +32,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "secret-guard": set(),
     "usage-meter": set(),
     "diagram": set(),
-    "moddeck": {"git", "pipx", "uvx"},         # git: read-only for the Session box, and `git ls-remote --tags` for the update check; pipx/uvx: the installer's own one-liner, only after you answer "Update now"
+    "moddeck": {"git", "pipx", "uvx", "codex", "claude"},         # git: read-only for the Session box, and `git ls-remote --tags` for the update check; pipx/uvx: the installer's own one-liner, only after you answer "Update now"; codex/claude: the External Agent the person set up, read-only
     "data-guard": {"git"},
     "big-file-guard": set(),
     "repro-log": {"git", "python3", "node", "R"},          # only `--version` probes, for runtimes that appeared in the session

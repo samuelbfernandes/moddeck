@@ -1,8 +1,0 @@
-{
-  "name": "codex-bridge",
-  "version": "0.1.0",
-  "description": "Ask OpenAI Codex from Claude Code: /codex <question>, /codex-review for uncommitted changes, and a read-only tool Claude can call for a second opinion.",
-  "author": {
-    "name": "Samuel Fernandes"
-  }
-}
