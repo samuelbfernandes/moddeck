@@ -126,7 +126,9 @@ class UserScope(Base):
         skill.rename(elsewhere)
         skill.symlink_to(elsewhere)
         self.install("--scope", "user")  # used to crash in the undo step: rmtree refuses a link
+        self.install("--scope", "user")  # and each run used to rename the link to a .bak copy
         self.assertTrue(skill.is_symlink())
+        self.assertEqual([p.name for p in skill.parent.iterdir() if p.name.startswith("review.bak")], [])
         self.assertTrue((elsewhere / "SKILL.md").exists())
         s = json.loads((self.home / ".claude" / "settings.json").read_text())
         self.assertIn("Bash(git push:*)", s["permissions"]["ask"])

@@ -278,6 +278,10 @@ def _skills(c: Ctx) -> None:
     names = []
     for s in MOD_SKILLS:
         src, dst = lay.stage / "skills" / s, lay.skills_dir / s
+        if dst.is_symlink():
+            # Another tool links its own copy here (for example ~/.agents/skills): leave it, and do not record it as ours.
+            c.say(f"   {s} is a link managed elsewhere: left as it is")
+            continue
         if dst.exists():
             if _same_tree(src, dst):
                 names.append(s)
