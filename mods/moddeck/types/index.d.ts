@@ -83,6 +83,14 @@ declare module 'claude-code' {
       listQuery: Record<string, string>
       /** The text in the Side Question's Ask here field, emptied after asking and by ✕ close. */
       btwDraft: string
+      /** The Codex box's last questions and answers, newest first (in memory only), asked through the codex-bridge mod. */
+      codex: BtwEntry[]
+      /** The Codex box is expanded. */
+      codexOpen: boolean
+      /** The text in the Codex box's field. */
+      codexDraft: string
+      /** The codex-bridge tool is available in this session; null = not checked yet. */
+      codexReady: boolean | null
       /** Lines each list shows (`skills`, `prompts`), as its more/fewer buttons set it (also kept in the store); null = not loaded. */
       listRows: Record<string, number> | null
       /** Starred skill ids, drawn at the top of the Skills box (also kept in the store); null = not loaded. */

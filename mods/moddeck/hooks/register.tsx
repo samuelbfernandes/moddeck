@@ -74,6 +74,11 @@ const folded = atom({ plugin: 'moddeck', key: 'folded' } as const, null as strin
 /** Rows opened by their ▸ button to show the full description (`tool:<id>`, `skill:<id>`, `prompt:<id>`); kept in the store as `opened`. null = not loaded. */
 const opened = atom({ plugin: 'moddeck', key: 'opened' } as const, null as string[] | null)
 const btwDraft = atom({ plugin: 'moddeck', key: 'btwDraft' } as const, '')
+/** The Codex box, right under Side Question: questions go to the codex-bridge mod's read-only tool, answers stay in the side bar. */
+const codexOpen = atom({ plugin: 'moddeck', key: 'codexOpen' } as const, false)
+const codexList = atom({ plugin: 'moddeck', key: 'codex' } as const, [] as BtwEntry[])
+const codexDraft = atom({ plugin: 'moddeck', key: 'codexDraft' } as const, '')
+const codexReady = atom({ plugin: 'moddeck', key: 'codexReady' } as const, null as boolean | null)
 /** A newer release the person has not updated to yet (null = none known); the side bar shows a one-line button for it. */
 const updateAvail = atom({ plugin: 'moddeck', key: 'updateAvail' } as const, null as string | null)
 /** The expand button: the pane is drawn wide (`WIDE_COLUMNS`) instead of `COLUMNS`. */
@@ -405,6 +410,43 @@ async function askBtw($: Dollar, maxChars: number, text: string): Promise<string
     await update($, btwList, l => patchEntry(l, id, patch))
   })
   return 'Side Question · thinking · the answer is in the side bar'
+}
+
+// ---- Codex box: a question for OpenAI Codex through the codex-bridge mod, answered in the side bar ------------------------
+// moddeck never starts codex itself: it calls codex-bridge's tool, which runs Codex read-only and ephemeral. The call goes
+// through the permission check like any tool call. Fail open: any failure is shown on the entry, nothing else is blocked.
+const CODEX_TOOL = 'mcp__codex-bridge__ask'
+/** Codex may take up to ten minutes; an entry still running after this no longer blocks a new question. */
+const CODEX_STALE_MS = 11 * 60_000
+const CODEX_MAX_CHARS = 6000
+
+async function askCodexBox($: Dollar, text: string, mode: 'ask' | 'review'): Promise<string> {
+  const question = text.trim()
+  if (mode === 'ask' && question === '') return 'Codex · type a question in the Codex box'
+  const now = await $.clock.now()
+  const list = await read($, codexList)
+  if (list.some(a => a.status === 'thinking' && now - a.at < CODEX_STALE_MS)) return 'Codex · one is still running'
+  await safe(() => update($, codexOpen, () => true))
+  const id = nextId(list)
+  const label = mode === 'review' ? `Review my uncommitted changes${question === '' ? '' : `: ${question}`}` : question
+  await update($, codexList, l => addEntry(l, { id, at: now, question: label, status: 'thinking', answer: '', isCut: false, tokens: null, note: '' }))
+  defer($, async () => {
+    let patch: Partial<BtwEntry>
+    try {
+      const r = (await $.tool.call({ tool: CODEX_TOOL, prompt: question, mode } as never)) as { deny?: string; result?: unknown; text?: string; isError?: true }
+      const body = typeof r.result === 'string' ? r.result : (r.text ?? '')
+      if (r.deny !== undefined) patch = { status: 'failed', note: `Not run · ${headline(r.deny, 160)}` }
+      else if (r.isError === true) patch = { status: 'failed', note: headline(body, 200) || 'Codex failed' }
+      else {
+        const cut = cutAnswer(body, CODEX_MAX_CHARS)
+        patch = { status: 'done', answer: cut.text, isCut: cut.isCut }
+      }
+    } catch {
+      patch = { status: 'failed', note: 'codex-bridge is not installed, or the call was stopped' }
+    }
+    await update($, codexList, l => patchEntry(l, id, patch))
+  })
+  return mode === 'review' ? 'Codex · reviewing · the answer is in the side bar' : 'Codex · thinking · the answer is in the side bar'
 }
 
 // ---- update check: `git ls-remote --tags` for the newest release, asked once per window; nothing is installed without a yes ----
@@ -812,6 +854,11 @@ export const register: Register = (on, options) => {
     } catch {
       // without it the box at the bottom of the side bar still takes questions
     }
+    // After every plugin's session.start has run: is codex-bridge's tool there? The Codex box is drawn only if so.
+    defer($, async () => {
+      const ready = (await attempt(async () => (await $.tool.list()).some(t => t.name === CODEX_TOOL))) ?? false
+      await update($, codexReady, () => ready)
+    })
     if (updateCheckOn) defer($, async () => void (await checkForUpdate($, false))) // every time it is turned on: a quiet look at the newest release
     if (showSession) defer($, () => primeSession($)) // reading only: never blocks the start
     defer($, () => readSkills($)) // the Skills box lists every installed skill
@@ -1108,6 +1155,76 @@ export const register: Register = (on, options) => {
           ))}
       </Box>
     )
+
+    // The Codex box, right under Side Question and built the same way; drawn only while the codex-bridge tool is available.
+    let codexBox: unknown = null
+    if ((await read($, codexReady)) === true) {
+      const codexes = await read($, codexList)
+      const isCodexOpen = await read($, codexOpen)
+      const codexBusy = codexes.some(b => b.status === 'thinking')
+      const codexText = await read($, codexDraft)
+      const askCodex = (v: string, mode: 'ask' | 'review') => {
+        if (mode === 'ask') void update($, codexDraft, () => '')
+        void askCodexBox($, v, mode).then(t => $.ui.toast(t))
+      }
+      codexBox = (
+        <Box key="codex" flexDirection="column" borderStyle="round" paddingX={1} {...fill} {...fit}>
+          <Box key="codex:head" columnGap={1} alignItems="center" {...fit}>
+            {codexes.length > 0 && (
+              <Button key="codex:toggle" plain label={desk ? undefined : isCodexOpen ? 'hide answers' : 'show answers'} onPress={() => void update($, codexOpen, o => !o)}>
+                <Text {...inked}>{isCodexOpen ? '▾' : `▸ ${codexes.length}`}</Text>
+              </Button>
+            )}
+            <Box key="codex:title" flexShrink={0} hover={{ scope: 'codex-tip' }}>
+              <Text bold {...inked}>{`Codex $${codexBusy ? ' …' : ''}`}</Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1} {...fit}>
+              {Input !== undefined ? (
+                <Input key="codex:input" placeholder="Ask Codex" submitLabel="ask" value={codexText} onInput={(v: string) => void update($, codexDraft, () => v)} onSubmit={(v: string) => askCodex(v, 'ask')} />
+              ) : (
+                <Text {...dim} wrap="truncate-end">
+                  type /codex your question
+                </Text>
+              )}
+            </Box>
+            <Button key="codex:review" plain label="review my uncommitted changes" onPress={() => askCodex('', 'review')}>
+              <Text color={link}>review</Text>
+            </Button>
+          </Box>
+          <Box position="absolute" top={1} left={0} right={0} display="none" hover={{ scope: 'codex-tip', display: 'flex' }} borderStyle="round" paddingX={1} {...fill}>
+            <Text {...dim} wrap="wrap">
+              Ask OpenAI Codex. It runs read-only: it can read this project, never change it. review = Codex reviews your uncommitted git changes. Uses your Codex quota. The answer shows here only; ↳ prompt copies it into your prompt box.
+            </Text>
+          </Box>
+          {isCodexOpen &&
+            codexes.slice(0, 2).map(b => (
+              <Box key={`codex:${b.id}`} flexDirection="column">
+                <Text color={link} wrap="truncate-end">{`› ${headline(b.question, room)}`}</Text>
+                {b.answer !== '' && (
+                  <Text {...inked} wrap="wrap">
+                    {b.answer}
+                  </Text>
+                )}
+                <Text {...dim} wrap="truncate-end">
+                  {b.status === 'thinking' ? 'Codex is working… (can take a few minutes)' : b.status === 'failed' ? b.note : `Codex · not added to the conversation${b.isCut ? ' · cut' : ''}`}
+                </Text>
+                {b.status !== 'thinking' && (
+                  <Box columnGap={2}>
+                    {b.answer !== '' && (
+                      <Button key={`codex:fill:${b.id}`} plain onPress={() => void $.prompt.fill({ text: `Codex said:\n${b.answer}\n\n`, mode: 'insert' })}>
+                        <Text color={link}>↳ prompt</Text>
+                      </Button>
+                    )}
+                    <Button key={`codex:close:${b.id}`} plain onPress={() => void update($, codexList, l => l.filter(a => a.id !== b.id))}>
+                      <Text color={link}>✕ close</Text>
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            ))}
+        </Box>
+      )
+    }
 
     // Switches: only the ones whose state this side bar can read. Each switch reads its own mod's state; a mod that is not
     // installed (or not readable) is simply not drawn.
@@ -1466,6 +1583,7 @@ export const register: Register = (on, options) => {
         )}
         {sessionBox as never}
         {btwBox as never}
+        {codexBox as never}
         {toolCards}
         {skillCard as never}
         {promptCard as never}

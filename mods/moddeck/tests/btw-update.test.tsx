@@ -244,6 +244,40 @@ test('the Ask here field is always beside the title; Enter asks; the title expla
   expect(JSON.stringify(await pane.find({ key: 'btw:input' }))).toContain('"value":""') // ✕ close leaves a fresh field
 })
 
+// ---- the Codex box -----------------------------------------------------------------------------------------------------------
+test('with codex-bridge, a Codex box sits under Side Question; a question goes to its tool and the answer shows there only', {}, async ($, on) => {
+  const w = world(on)
+  const calls: { prompt: unknown; mode: unknown }[] = []
+  on('tool.list', () => ({ value: [{ name: 'mcp__codex-bridge__ask' }] as never }))
+  on('tool.call', { tool: 'mcp__codex-bridge__ask' }, (_, e) => {
+    calls.push({ prompt: (e as { prompt?: unknown }).prompt, mode: (e as { mode?: unknown }).mode })
+    return { result: 'Use a mixed model.' } as never
+  })
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  const shown = await texts(pane)
+  expect(shown.indexOf('Codex $')).toBeGreaterThan(shown.indexOf('Side Question'))
+  await pane.input({ key: 'codex:input', text: 'which model?', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(calls).toEqual([{ prompt: 'which model?', mode: 'ask' }])
+  const after = await texts(pane)
+  expect(after).toContain('› which model?')
+  expect(after).toContain('Use a mixed model.')
+  expect(after).toContain('Codex · not added to the conversation')
+  await pane.press({ key: 'codex:review' })
+  await w.clock.advance(5)
+  expect(calls[1]).toEqual({ prompt: '', mode: 'review' })
+})
+
+test('without codex-bridge there is no Codex box', {}, async ($, on) => {
+  const w = world(on)
+  on('tool.list', () => ({ value: [] as never }))
+  await start($)
+  await w.clock.advance(5)
+  expect(await (await mount($)).find({ key: 'codex' })).toBeUndefined()
+})
+
 test('a failed or empty answer says why and changes nothing else', {}, async ($, on) => {
   const w = world(on)
   await start($)
