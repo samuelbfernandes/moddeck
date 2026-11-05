@@ -48,10 +48,11 @@ const PANE_SURFACES = new Set(['terminal', 'desktop'])
  * theme's colour (light on a dark theme, dark on a light one), so a pill's fill is chosen to read under that text:
  * deep on a dark theme, a pale tint of the same hue on a light one.
  */
-type Ink = { fill: string; text: string; desc: string; link: string; on: string; off: string; run: string; dotOn: string; dotOff: string }
+type Ink = { fill: string; text: string; desc: string; link: string; on: string; off: string; run: string; dotOn: string; dotOff: string; codex: string; error: string }
+// codex: the Codex box's title only (7.04:1 dark, 5.20:1 light on fill); error: failure text (5.96:1 dark, 4.58:1 light). WCAG AA checked.
 const INK: Record<'dark' | 'light', Ink> = {
-  dark: { fill: '#1F1F1E', text: '#ECEAE4', desc: '#9A9893', link: '#7FB2E5', on: '#166534', off: '#991B1B', run: '#374151', dotOn: '#22C55E', dotOff: '#EF4444' },
-  light: { fill: '#FAF9F5', text: '#1F1F1E', desc: '#6B6A65', link: '#185FA5', on: '#BBF7D0', off: '#FECACA', run: '#E5E7EB', dotOn: '#16A34A', dotOff: '#DC2626' },
+  dark: { fill: '#1F1F1E', text: '#ECEAE4', desc: '#9A9893', link: '#7FB2E5', on: '#166534', off: '#991B1B', run: '#374151', dotOn: '#22C55E', dotOff: '#EF4444', codex: '#5EB8B0', error: '#F87171' },
+  light: { fill: '#FAF9F5', text: '#1F1F1E', desc: '#6B6A65', link: '#185FA5', on: '#BBF7D0', off: '#FECACA', run: '#E5E7EB', dotOn: '#16A34A', dotOff: '#DC2626', codex: '#0F766E', error: '#DC2626' },
 }
 type ThemePick = 'light' | 'dark'
 const THEMES: readonly ThemePick[] = ['light', 'dark']
@@ -79,6 +80,9 @@ const codexOpen = atom({ plugin: 'moddeck', key: 'codexOpen' } as const, false)
 const codexList = atom({ plugin: 'moddeck', key: 'codex' } as const, [] as BtwEntry[])
 const codexDraft = atom({ plugin: 'moddeck', key: 'codexDraft' } as const, '')
 const codexReady = atom({ plugin: 'moddeck', key: 'codexReady' } as const, null as boolean | null)
+/** Codex answers shown in full by their "more" button; the others stop at CODEX_CLAMP_LINES lines. */
+const codexFull = atom({ plugin: 'moddeck', key: 'codexFull' } as const, [] as number[])
+const CODEX_CLAMP_LINES = 12
 /** A newer release the person has not updated to yet (null = none known); the side bar shows a one-line button for it. */
 const updateAvail = atom({ plugin: 'moddeck', key: 'updateAvail' } as const, null as string | null)
 /** The expand button: the pane is drawn wide (`WIDE_COLUMNS`) instead of `COLUMNS`. */
@@ -1163,6 +1167,7 @@ export const register: Register = (on, options) => {
       const isCodexOpen = await read($, codexOpen)
       const codexBusy = codexes.some(b => b.status === 'thinking')
       const codexText = await read($, codexDraft)
+      const codexFullIds = await read($, codexFull)
       const askCodex = (v: string, mode: 'ask' | 'review') => {
         if (mode === 'ask') void update($, codexDraft, () => '')
         void askCodexBox($, v, mode).then(t => $.ui.toast(t))
@@ -1176,7 +1181,7 @@ export const register: Register = (on, options) => {
               </Button>
             )}
             <Box key="codex:title" flexShrink={0} hover={{ scope: 'codex-tip' }}>
-              <Text bold {...inked}>{`Codex $${codexBusy ? ' …' : ''}`}</Text>
+              <Text bold color={ink?.codex ?? 'suggestion'}>{`Codex $${codexBusy ? ' …' : ''}`}</Text>
             </Box>
             <Box flexGrow={1} flexShrink={1} {...fit}>
               {Input !== undefined ? (
@@ -1191,28 +1196,46 @@ export const register: Register = (on, options) => {
               <Text color={link}>review</Text>
             </Button>
           </Box>
+          <Text key="codex:note" {...dim} wrap="truncate-end">
+            reads this project · cannot edit it · uses your Codex quota
+          </Text>
           <Box position="absolute" top={1} left={0} right={0} display="none" hover={{ scope: 'codex-tip', display: 'flex' }} borderStyle="round" paddingX={1} {...fill}>
             <Text {...dim} wrap="wrap">
-              Ask OpenAI Codex. It runs read-only: it can read this project, never change it. review = Codex reviews your uncommitted git changes. Uses your Codex quota. The answer shows here only; ↳ prompt copies it into your prompt box.
+              Ask OpenAI Codex. It can read this project but cannot edit files. review: Codex reviews your uncommitted git changes. Each question uses your Codex quota. Answers stay here and are not sent to Claude unless you press use in prompt.
             </Text>
           </Box>
           {isCodexOpen &&
-            codexes.slice(0, 2).map(b => (
+            codexes.slice(0, 2).map(b => {
+              const lines = b.answer.split('\n')
+              const isLong = lines.length > CODEX_CLAMP_LINES
+              const isFull = codexFullIds.includes(b.id)
+              return (
               <Box key={`codex:${b.id}`} flexDirection="column">
                 <Text color={link} wrap="truncate-end">{`› ${headline(b.question, room)}`}</Text>
                 {b.answer !== '' && (
                   <Text {...inked} wrap="wrap">
-                    {b.answer}
+                    {isLong && !isFull ? `${lines.slice(0, CODEX_CLAMP_LINES).join('\n')}\n…` : b.answer}
                   </Text>
                 )}
-                <Text {...dim} wrap="truncate-end">
-                  {b.status === 'thinking' ? 'Codex is working… (can take a few minutes)' : b.status === 'failed' ? b.note : `Codex · not added to the conversation${b.isCut ? ' · cut' : ''}`}
-                </Text>
+                {b.status === 'failed' ? (
+                  <Text color={ink?.error ?? 'error'} wrap="wrap">
+                    {b.note}
+                  </Text>
+                ) : (
+                  <Text {...dim} wrap="truncate-end">
+                    {b.status === 'thinking' ? 'Codex is working… stops after 10 min · you can keep chatting' : `Codex · not added to the conversation${b.isCut ? ' · cut' : ''}`}
+                  </Text>
+                )}
                 {b.status !== 'thinking' && (
                   <Box columnGap={2}>
+                    {isLong && (
+                      <Button key={`codex:more:${b.id}`} plain onPress={() => void update($, codexFull, l => (l.includes(b.id) ? l.filter(i => i !== b.id) : [...l, b.id]))}>
+                        <Text color={link}>{isFull ? '▴ less' : '▾ more'}</Text>
+                      </Button>
+                    )}
                     {b.answer !== '' && (
                       <Button key={`codex:fill:${b.id}`} plain onPress={() => void $.prompt.fill({ text: `Codex said:\n${b.answer}\n\n`, mode: 'insert' })}>
-                        <Text color={link}>↳ prompt</Text>
+                        <Text color={link}>↳ use in prompt</Text>
                       </Button>
                     )}
                     <Button key={`codex:close:${b.id}`} plain onPress={() => void update($, codexList, l => l.filter(a => a.id !== b.id))}>
@@ -1221,7 +1244,8 @@ export const register: Register = (on, options) => {
                   </Box>
                 )}
               </Box>
-            ))}
+              )
+            })}
         </Box>
       )
     }

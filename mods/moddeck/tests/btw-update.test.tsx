@@ -270,6 +270,29 @@ test('with codex-bridge, a Codex box sits under Side Question; a question goes t
   expect(calls[1]).toEqual({ prompt: '', mode: 'review' })
 })
 
+test('a long Codex answer stops at 12 lines until "more"; a failure shows its reason', {}, async ($, on) => {
+  const w = world(on)
+  const long = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join('\n')
+  let reply: unknown = { result: long }
+  on('tool.list', () => ({ value: [{ name: 'mcp__codex-bridge__ask' }] as never }))
+  on('tool.call', { tool: 'mcp__codex-bridge__ask' }, () => reply as never)
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  expect(await texts(pane)).toContain('cannot edit it')
+  await pane.input({ key: 'codex:input', text: 'long?', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('line 12')
+  expect(await texts(pane)).not.toContain('line 13')
+  const more = (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).find(k => k?.startsWith('codex:more:'))!
+  await pane.press({ key: more })
+  expect(await texts(pane)).toContain('line 20')
+  reply = { result: 'Codex failed (exit 1): not logged in', isError: true }
+  await pane.input({ key: 'codex:input', text: 'again', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('not logged in')
+})
+
 test('without codex-bridge there is no Codex box', {}, async ($, on) => {
   const w = world(on)
   on('tool.list', () => ({ value: [] as never }))

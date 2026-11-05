@@ -91,6 +91,8 @@ declare module 'claude-code' {
       codexDraft: string
       /** The codex-bridge tool is available in this session; null = not checked yet. */
       codexReady: boolean | null
+      /** Ids of Codex answers shown in full (the others are clamped to 12 lines). */
+      codexFull: number[]
       /** Lines each list shows (`skills`, `prompts`), as its more/fewer buttons set it (also kept in the store); null = not loaded. */
       listRows: Record<string, number> | null
       /** Starred skill ids, drawn at the top of the Skills box (also kept in the store); null = not loaded. */
