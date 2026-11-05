@@ -12,6 +12,7 @@ file writes and model use. It is a tripwire and a summary, not a proof: read the
 | branch-janitor | no | gh, git | no | no | command.run, prompt.submit, session.start, tool.call |
 | cache-guard | no | none | no | yes | classic.SessionStart, command.run, model.fork, prompt.submit, session.end, session.start, turn.complete, turn.start, turn.step |
 | checkpoint | no | cmd, git, rm | no | no | command.run, prompt.submit, session.start |
+| codex-bridge | no | codex | no | no | command.run, session.start, tool.call |
 | command-guard | no | du, find, git | no | no | command.run, session.start, tool.call |
 | concise | no | none | no | no | command.run, prompt.submit, session.compact, session.start |
 | contrast-check | no | none | no | no | command.run, session.start, ui.render |

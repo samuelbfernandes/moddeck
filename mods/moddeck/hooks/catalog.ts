@@ -184,6 +184,16 @@ export const TOOLS: Tool[] = [
   },
   { id: 'review-cost', label: 'review-cost', group: 'Model controls', icon: '$', desc: 'Shows review cost before a push', isSwitch: true, command: 'review-cost' },
   {
+    id: 'codex-bridge',
+    label: 'codex-bridge',
+    group: 'Model controls',
+    icon: '⇄',
+    desc: 'Ask OpenAI Codex (read-only) a question, or have it review your uncommitted changes',
+    costs: true,
+    click: { text: '/codex ', run: false },
+    options: [{ label: 'review', text: '/codex-review', run: true, costs: true }],
+  },
+  {
     id: 'checkpoint',
     label: 'checkpoint',
     group: 'Workspace utilities',

@@ -24,6 +24,7 @@ ALLOW_PROGRAMS: dict[str, set[str]] = {
     "cache-guard": set(),
     "filetree": {"git"},
     "model-picker": {"codex"},                # offered as an option for review tasks, only if Codex is installed
+    "codex-bridge": {"codex"},                # `codex exec`, read-only and ephemeral, only when the person or Claude asks
     "reflect": set(),
     "edit-replay": set(),
     "review-cost": {"git"},

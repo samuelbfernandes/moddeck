@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.5.1] - unreleased
+- New mod **codex-bridge**: `/codex <question>` and `/codex-review` ask OpenAI Codex from Claude Code, and Claude gets a read-only `ask` tool for a second opinion. Codex always runs read-only and ephemeral; the question goes on stdin. moddeck lists it under Model controls.
 - prompt-library 0.2.0: one list of saved prompts for every project instead of one per folder; the first time it is read it starts from that folder's older list. The `review` starter now calls the review skill.
 - **Skills merged and sharpened (six to five).** `burst` + `no-ai-text` (with the humanizer patterns, and the email, ghostwriter, naming and persuade prompts) become **writing**; `dual-model-review` becomes **review** (a quick self-review for ordinary code, a second model for method changes); `align` becomes **plan-first** (it now also helps choose the design). Every description says when to use it and when not to. The installer moves an existing install to the new names. The humanizer plugin is no longer needed beside `writing`.
 - Three new mods: **method-review** (holds the first commit or push once after method code was edited without a second-model review), **verify-before-done** (a toast and a reminder when a turn changed code and ran no test) and **skill-router** (one line naming the matching skill on a prompt that clearly asks for it). moddeck 0.10.8 lists them as switches.

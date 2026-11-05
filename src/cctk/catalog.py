@@ -76,6 +76,7 @@ MOD_META: dict[str, tuple[str, str, bool]] = {
     "branch-janitor": ("none", "", True),
     "cache-guard": ("none (keep-warm pings are optional)", "", True),
     "review-cost": ("none (only estimates)", "codex", True),
+    "codex-bridge": ("Codex quota per call; the answer adds to Claude's context", "codex", False),
     "reflect": ("small: a corrected prompt goes once to a small model", "", False),
     "progress": ("none", "", False),
     "filetree": ("none", "", False),
