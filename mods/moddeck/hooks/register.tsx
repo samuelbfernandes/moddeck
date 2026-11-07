@@ -1312,9 +1312,11 @@ export const register: Register = (on, options) => {
           )}
         </Box>
         {wiz === null && (
-          <Button key="agent:setup" plain label="change the agent, connection or model" onPress={() => void wizOpen($)}>
-            <Text color={link}>⚙ change</Text>
-          </Button>
+          <Box key="agent:setup:box" flexShrink={0}>
+            <Button key="agent:setup" plain label="change the agent, connection or model" onPress={() => void wizOpen($)}>
+              <Text color={link}>⚙ change</Text>
+            </Button>
+          </Box>
         )}
       </Box>
     )
