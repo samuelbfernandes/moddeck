@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.5.1] - unreleased
+- New skill **skill-cleanup**: audits installed skills, plugins, MCP servers and hooks (copies and drift, overlaps to merge, privacy and security, telemetry, hook order, stale records, private forks), writes a report, and applies only the items you pick, reversibly. It leaves usage and context cost to Claude Code's skill-doctor and runs after it.
 - moddeck 0.10.9: the side-question command is now **`/side`**. Claude Code ships its own `/btw`, so registering that name was refused and `claude plugin validate` reported the session-start hook as skipped. Saved answers carry over.
 - moddeck 0.10.9: the Skills box lists every skill, including slash-only ones (`disable-model-invocation`, such as all octo skills) and plugin or user slash commands. Before, it read only the skills the model may invoke. Those rows insert `/name` instead of "Use the … skill".
 - prompt-library 0.2.0: one list of saved prompts for every project instead of one per folder; the first time it is read it starts from that folder's older list. The `review` starter now calls the review skill.

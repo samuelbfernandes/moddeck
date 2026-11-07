@@ -290,6 +290,7 @@ export const SKILLS: Skill[] = [
   { id: 'writing', label: 'writing', desc: 'Three versions, edits, rewrites; removes AI tells', text: 'Use the writing skill: ' },
   { id: 'agents-md-scaffold', label: 'agents-md-scaffold', desc: 'Sets up, scores or revises AGENTS.md', text: 'Use the agents-md-scaffold skill to set up AGENTS.md for this repo' },
   { id: 'assess-plugin', label: 'assess-plugin', desc: 'Checks a plugin before you install it', text: 'Use the assess-plugin skill to assess ' },
+  { id: 'skill-cleanup', label: 'skill-cleanup', desc: 'Cleans up skills, plugins and hooks', text: 'Use the skill-cleanup skill to audit my installed skills and plugins' },
 ]
 
 /** Starred items first (in list order), then the rest; unknown stars are ignored. */

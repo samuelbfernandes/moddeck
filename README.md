@@ -1,7 +1,7 @@
 # Moddeck
 
 **Safety and productivity mods for Claude Code, built for scientists.**
-Thirty-seven small add-ons (mods), five skills and a set of git guards that protect your work, keep your token bill visible, and
+Thirty-seven small add-ons (mods), six skills and a set of git guards that protect your work, keep your token bill visible, and
 stay quiet until they have something useful to say.
 
 > **Credit where it is due.** Not everything here is my own creation. Some mods and skills are adapted from other people's
@@ -129,6 +129,7 @@ Commands always start with `/`; a word without the slash is an ordinary prompt. 
 - `writing`: options (three graded versions), edit and detect (takes the AI tells out, keeps your voice; includes the humanizer patterns), and rewrite, in one skill.
 - `agents-md-scaffold`: sets up `AGENTS.md`, a decisions log and a review rubric.
 - `assess-plugin`: what a plugin installs, costs and risks, before you install it.
+- `skill-cleanup`: after skill-doctor, finds copied and overlapping skills, privacy and security risks, telemetry, hook-order conflicts and stale records; writes a report, then applies only what you pick, reversibly.
 
 ### Git guards and settings
 
