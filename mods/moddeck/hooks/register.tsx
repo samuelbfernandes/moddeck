@@ -1345,9 +1345,12 @@ export const register: Register = (on, options) => {
         </Button>
       )
       body.push(
-        <Text key="agent:wiz:title" bold {...inked} wrap="wrap">
-          {`Setup · step ${steps.indexOf(wiz.step) + 1} of ${steps.length}`}
-        </Text>,
+        <Box key="agent:wiz:top" columnGap={2} {...fit}>
+          <Text bold {...inked} wrap="wrap">
+            {`Setup · step ${steps.indexOf(wiz.step) + 1} of ${steps.length}`}
+          </Text>
+          {cancel}
+        </Box>,
       )
       if (wiz.step === 'agent') {
         body.push(<Text key="agent:wiz:q" {...inked} wrap="wrap">Which agent should Claude work with?</Text>)
@@ -1356,7 +1359,6 @@ export const register: Register = (on, options) => {
           const state = f === undefined ? 'checking…' : f.isInstalled ? `installed${f.version ? ` · ${headline(f.version, 28)}` : ''}` : f.version ? f.version : 'not found on this machine'
           body.push(choose(`agent:pick:${id}`, wiz.agent === id, `${AGENTS[id].label}${id === DEFAULT_AGENT ? ' (default)' : ''} · ${state}`, () => void patchWiz($, () => ({ agent: id, step: 'connect', baseUrl: '', model: '' }))))
         }
-        if (cancel) body.push(cancel)
       } else if (wiz.step === 'connect') {
         const a = AGENTS[wiz.agent]
         body.push(<Text key="agent:wiz:cq" {...inked} wrap="wrap">{`How should Claude connect to ${a.label}?`}</Text>)
@@ -1454,7 +1456,11 @@ export const register: Register = (on, options) => {
       const width = Math.max(10, room - 6)
       const fieldRows = Math.min(8, Math.max(1, draftText.split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / width)), 0)))
       const thread = isAgentOpen ? [...chats].reverse() : []
+      // Until the first answer, say what the agent may do here: the tip on hover is not seen by everyone.
+      const scope = connectionOf(agentCfg) === 'api' ? 'answer questions only' : accessOf(agentCfg) === 'edit' ? 'read and edit this project and run commands' : 'read this project'
+      const hint = `${AGENTS[agentCfg.agent].label} can ${scope}.${connectionOf(agentCfg) === 'api' ? '' : ' Each task asks your permission first.'}`
       body = [
+        ...(chats.length === 0 ? [<Text key="agent:hint" {...dim} wrap="wrap">{hint}</Text>] : []),
         ...thread.map(b => {
           const lines = b.answer.split('\n')
           const isLong = lines.length > AGENT_CLAMP_LINES
