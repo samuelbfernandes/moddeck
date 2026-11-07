@@ -284,7 +284,7 @@ test('the pane says $ means tokens', async ($, on) => {
   expect(await texts(await mount($, 'terminal'))).toContain('$ = spends model tokens')
 })
 
-test('the skills list has no scroll buttons while all of its skills fit', { ...MODS, options: { skillRows: 6 } }, async ($, on) => {
+test('the skills list has no scroll buttons while all of its skills fit', { ...MODS, options: { skillRows: 7 } }, async ($, on) => {
   world(on)
   const pane = await mount($, 'desktop')
   expect(await pane.find({ key: 'skills:down' })).toBeUndefined() // everything fits: no bar, no arrows
@@ -296,15 +296,17 @@ test('with more skills than fit, the list has a scroll bar with ▲ and ▼ (a l
   const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
   expect(await shown()).toEqual(['skill:review', 'skill:plan-first', 'skill:writing', 'skill:agents-md-scaffold', 'skill:assess-plugin'])
-  expect(await texts(pane)).toContain('Skills · 6')
+  expect(await texts(pane)).toContain('Skills · 7')
   expect(JSON.stringify(await pane.find({ key: 'skills:up' }))).toContain('▲')
   expect(JSON.stringify(await pane.find({ key: 'skills:down' }))).toContain('▼')
   expect(JSON.stringify(await pane.find({ key: 'skills:bar:0' }))).toContain('┃') // the thumb at the top
   await pane.press({ key: 'skills:down' }) // ▼: one line down
   expect((await shown())[0]).toBe('skill:plan-first')
+  await pane.press({ key: 'skills:down' }) // the last line
   await pane.press({ key: 'skills:down' }) // already at the end: stays
   expect((await shown()).at(-1)).toBe('skill:zz-extra')
   await pane.press({ key: 'skills:up' }) // ▲: one line up
+  await pane.press({ key: 'skills:up' })
   expect((await shown())[0]).toBe('skill:review')
   await pane.press({ key: 'skills:bar:2' }) // the track below the thumb: a page down, clamped to the last page
   expect((await shown()).at(-1)).toBe('skill:zz-extra')
@@ -322,9 +324,11 @@ test('more and fewer change how many lines the Skills list shows, never below fi
   await pane.press({ key: 'skills:more' })
   expect((await shown()).length).toBe(6)
   expect(store.get('listRows')).toEqual({ skills: 6 })
-  expect(await pane.find({ key: 'skills:more' })).toBeUndefined() // all six show
+  await pane.press({ key: 'skills:more' })
+  expect((await shown()).length).toBe(7)
+  expect(await pane.find({ key: 'skills:more' })).toBeUndefined() // all seven show
   await pane.press({ key: 'skills:fewer' })
-  expect((await shown()).length).toBe(5)
+  expect((await shown()).length).toBe(6)
 })
 
 test('a star moves a skill to the top; the list still shows five and scrolls; a second click takes it off', async ($, on) => {
@@ -335,7 +339,9 @@ test('a star moves a skill to the top; the list still shows five and scrolls; a 
   const pane = await mountSkills($, 'desktop')
   const shown = async () => (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).filter((k): k is string => k?.startsWith('skill:') === true)
   await pane.press({ key: 'skills:down' }) // scroll to reach zz-extra
+  await pane.press({ key: 'skills:down' })
   await pane.press({ key: 'star:zz-extra' })
+  await pane.press({ key: 'skills:up' })
   await pane.press({ key: 'skills:up' })
   expect((await shown())[0]).toBe('skill:zz-extra')
   expect((await shown()).length).toBe(5)
