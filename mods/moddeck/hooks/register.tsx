@@ -1314,7 +1314,7 @@ export const register: Register = (on, options) => {
         </Box>
         {wiz === null && (
           <Box key="agent:setup:box" flexShrink={0}>
-            <Button key="agent:setup" plain label="change the agent, connection or model" onPress={() => void wizOpen($)}>
+            <Button key="agent:setup" plain label={desk ? undefined : 'change the agent, connection or model'}onPress={() => void wizOpen($)}>
               <Text color={link}>⚙ change</Text>
             </Button>
           </Box>
@@ -1517,10 +1517,10 @@ export const register: Register = (on, options) => {
           </Box>
         </Box>,
         <Box key="agent:opts" columnGap={2} {...fit}>
-          <Button key="agent:model" plain label="pick another model" onPress={() => void wizOpen($).then(() => patchWiz($, () => ({ step: 'connect' })))}>
+          <Button key="agent:model" plain label={desk ? undefined : 'pick another model'}onPress={() => void wizOpen($).then(() => patchWiz($, () => ({ step: 'connect' })))}>
             <Text color={link} wrap="truncate-end">{`model: ${agentCfg.model || 'default'} ▾`}</Text>
           </Button>
-          <Button key="agent:review" plain label="review my uncommitted changes" onPress={() => askIt('', 'review')}>
+          <Button key="agent:review" plain label={desk ? undefined : 'review my uncommitted changes'}onPress={() => askIt('', 'review')}>
             <Text color={link}>review changes</Text>
           </Button>
         </Box>,
