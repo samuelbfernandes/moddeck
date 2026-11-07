@@ -10,7 +10,7 @@ const FULLSCREEN = { columns: 120, rows: 40, isFullscreen: true } as const
 const USAGE = { input_tokens: 400, output_tokens: 600, cache_read_input_tokens: 11_000, cache_creation_input_tokens: 0 }
 const TAGS = 'aaa\trefs/tags/v0.3.0\nbbb\trefs/tags/v0.4.1\nccc\trefs/tags/v0.10.0\nddd\trefs/tags/v0.11.0-rc1\neee\trefs/tags/nightly\n'
 
-function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; runner?: string; installExit?: number } = {}) {
+function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; runner?: string; installExit?: number; agentRun?: (argv: string[], stdin?: string) => unknown } = {}) {
   const store = new Map<string, unknown>()
   const w = {
     store,
@@ -24,14 +24,17 @@ function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; run
     panes: [] as string[],
     registered: [] as string[],
     clock: mock.clock(on, { now: 10_000_000_000 }),
+    appended: () => [] as readonly unknown[],
   }
-  mock.session(on)
+  const session = mock.session(on)
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
   on('store.get', (_$, e) => ({ value: store.get(e.key) }))
   on('store.set', (_$, e) => (store.set(e.key, e.value), { value: undefined }))
   on('process.run', (_$, e) => {
     w.ran.push([...e.argv])
+    const agent = o.agentRun?.([...e.argv], e.init?.stdin)
+    if (agent !== undefined) return { value: agent } as never
     const [bin, a] = e.argv
     if (bin === 'git' && a === 'ls-remote') return { value: { exitCode: o.lsExit ?? 0, stdout: o.tags ?? TAGS, stderr: '' } } as never
     if (bin === 'git') return { value: { exitCode: 128, stdout: '', stderr: 'not a repository' } } as never
@@ -52,6 +55,7 @@ function world(on: On, o: { tags?: string; lsExit?: number; answer?: string; run
   on('ui.close', (_$, e) => ((w.panes = w.panes.filter(p => p !== e.id)), { value: undefined }))
   on('prompt.fill', () => ({ isFilled: true }) as never)
   on('prompt.submit', (_$, e) => ({ text: e.text }))
+  w.appended = () => session.appended()
   return w
 }
 
@@ -242,6 +246,166 @@ test('the Ask here field is always beside the title; Enter asks; the title expla
   const close = (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).find(k => k?.startsWith('btw:close:'))!
   await pane.press({ key: close })
   expect(JSON.stringify(await pane.find({ key: 'btw:input' }))).toContain('"value":""') // ✕ close leaves a fresh field
+})
+
+// ---- the External Agent box and its setup wizard ------------------------------------------------------------------------------
+const MODELS = JSON.stringify({ models: [{ slug: 'gpt-a', visibility: 'list' }, { slug: 'gpt-b', visibility: 'list' }, { slug: 'secret', visibility: 'hide' }] })
+type Ran = { argv: string[]; stdin?: string }
+/** A machine with Codex (signed in unless told otherwise) and LM Studio, and none of the other agents. */
+function agentMachine(o: { signedIn?: boolean } = {}) {
+  const ran: Ran[] = []
+  let signedIn = o.signedIn ?? true
+  const res = (stdout: string, exitCode = 0) => ({ exitCode, stdout, stderr: exitCode ? 'failed' : '' })
+  const agentRun = (argv: string[], stdin?: string) => {
+    if (!['codex', 'claude', 'gemini', 'ollama', 'lms'].includes(argv[0]!)) return undefined
+    ran.push({ argv, stdin })
+    if (argv[0] === 'lms') return argv[1] === '--version' ? res('banner\nCLI commit: 43d4b26') : res('[{"modelKey":"google/gemma","type":"llm"},{"modelKey":"embed","type":"embedding"}]')
+    if (argv[0] !== 'codex') throw new Error('not found')
+    if (argv[1] === '--version') return res('codex-cli 0.162.0')
+    if (argv[1] === 'login' && argv[2] === 'status') return signedIn ? res('Logged in using ChatGPT') : res('Not logged in', 1)
+    if (argv[1] === 'login' && argv[2] === '--with-api-key') return (signedIn = stdin === 'sk-test'), res('ok', signedIn ? 0 : 1)
+    if (argv[1] === 'debug') return res(MODELS)
+    return res('unexpected')
+  }
+  return { ran, agentRun }
+}
+/** The external-agent mod's tool, as the side bar calls it: answers a check with "Connected", a task with its echo. */
+function agentTool(on: On, reply: (prompt: string, mode: string) => unknown = (p, m) => ({ result: m === 'check' ? 'Connected' : `done: ${p}` })) {
+  const calls: { prompt: string; mode: string }[] = []
+  on('tool.call', { tool: 'mcp__external-agent__ask' } as never, (_: unknown, e: any) => (calls.push({ prompt: e.prompt, mode: e.mode }), reply(e.prompt, e.mode)) as never)
+  return calls
+}
+const keys = async (pane: any) => (await pane.findAll({ type: 'Button' })).map((b: { key?: string }) => b.key ?? '')
+
+test('first open: the wizard finds Codex, local by default and able to edit, no API key, a model, a check, then a shared task', {}, async ($, on) => {
+  const m = agentMachine()
+  const w = world(on, { agentRun: m.agentRun })
+  const calls = agentTool(on)
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  let shown = await texts(pane)
+  expect(shown.indexOf('External Agent')).toBeGreaterThan(shown.indexOf('Side Question'))
+  expect(shown).toContain('Which agent should Claude work with?')
+  expect(shown).toContain('● Codex (OpenAI) (default) · installed · codex-cli 0.162.0')
+  expect(shown).toContain('○ LM Studio (local model) · installed · CLI commit: 43d4b26')
+  expect(shown).toContain('○ Gemini CLI · not found on this machine')
+  await pane.press({ key: 'agent:pick:codex' })
+  shown = await texts(pane)
+  expect(shown).toContain('● On this machine (default)')
+  expect(shown).toContain('○ Through its API (opt-in)')
+  expect(shown).toContain('● Edit files and run commands in this project (sandboxed)')
+  await pane.press({ key: 'agent:conn:next' })
+  await w.clock.advance(5)
+  shown = await texts(pane)
+  expect(shown).toContain('no API key needed')
+  expect(shown).toContain('gpt-a')
+  expect(shown).not.toContain('secret')
+  await pane.press({ key: 'agent:model:gpt-b' })
+  await pane.press({ key: 'agent:next' })
+  await w.clock.advance(5)
+  expect(calls[0]).toEqual({ prompt: 'Reply with exactly one word: ok', mode: 'check' })
+  expect(await texts(pane)).toContain('✓ Connected')
+  await pane.press({ key: 'agent:finish' })
+  expect(w.store.get('agent')).toEqual({ agent: 'codex', model: 'gpt-b', connection: 'local', access: 'edit' })
+  shown = await texts(pane)
+  expect(shown).not.toContain('Setup · step')
+  expect(shown).toContain('Codex (OpenAI) · this machine · can edit')
+  expect(shown).toContain('model: gpt-b ▾')
+  expect(JSON.stringify(await pane.find({ key: 'agent:input' }))).toContain('"rows":1')
+  await pane.input({ key: 'agent:input', text: 'line one\nline two\nline three', kind: 'change' })
+  expect(JSON.stringify(await pane.find({ key: 'agent:input' }))).toContain('"rows":3') // the field grows
+  await pane.input({ key: 'agent:input', text: 'add a test', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(calls[1]).toEqual({ prompt: 'add a test', mode: 'ask' })
+  shown = await texts(pane)
+  expect(shown).toContain('done: add a test')
+  expect(shown).toContain('Codex (OpenAI) · added to the chat')
+  const thread = JSON.stringify(w.appended())
+  expect(thread).toContain('The user asked Codex (OpenAI): add a test') // the model reads it in the shared thread
+  expect(thread).toContain('done: add a test')
+  expect(m.ran.some(r => r.argv.includes('--with-api-key'))).toBe(false) // no key was ever asked for
+})
+
+test('the API connection is opt-in, needs no sign-in step, and lists a local server\'s models', {}, async ($, on) => {
+  const m = agentMachine()
+  const w = world(on, { agentRun: m.agentRun })
+  agentTool(on)
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  await pane.press({ key: 'agent:pick:lmstudio' })
+  expect(await texts(pane)).toContain('● On this machine (default) · runs inside Codex · full tools')
+  await pane.press({ key: 'agent:conn:api' })
+  expect(await texts(pane)).toContain('Address: http://127.0.0.1:1234/v1')
+  await pane.press({ key: 'agent:conn:next' })
+  await w.clock.advance(5)
+  const shown = await texts(pane)
+  expect(shown).toContain('Setup · step 3 of 4')
+  expect(shown).toContain('google/gemma')
+  expect(shown).not.toContain('embed')
+  await pane.press({ key: 'agent:model:google/gemma' })
+  await pane.press({ key: 'agent:next' })
+  await w.clock.advance(5)
+  await pane.press({ key: 'agent:finish' })
+  expect(w.store.get('agent')).toEqual({ agent: 'lmstudio', model: 'google/gemma', connection: 'api', access: 'edit' })
+  expect(await texts(pane)).toContain('LM Studio (local model) · API · answers only')
+})
+
+test('an agent that is not signed in asks for a key, hands it to its own login, and keeps nothing', {}, async ($, on) => {
+  const m = agentMachine({ signedIn: false })
+  const w = world(on, { agentRun: m.agentRun })
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  await pane.press({ key: 'agent:pick:codex' })
+  await pane.press({ key: 'agent:conn:next' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('not signed in')
+  await pane.input({ key: 'agent:key', text: 'sk-test', kind: 'change' })
+  await pane.input({ key: 'agent:key', text: 'sk-test', kind: 'submit' })
+  await w.clock.advance(10)
+  expect(m.ran.find(r => r.argv.includes('--with-api-key'))?.stdin).toBe('sk-test')
+  expect(m.ran.every(r => !r.argv.join(' ').includes('sk-test'))).toBe(true) // the key is never an argument
+  expect(JSON.stringify(await pane.find({ key: 'agent:key' }) ?? {})).not.toContain('sk-test')
+  expect([...w.store.values()].some(v => JSON.stringify(v).includes('sk-test'))).toBe(false)
+  expect(await texts(pane)).toContain('no API key needed') // signed in now: on to the model
+})
+
+test('a saved agent opens the conversation; ⚙ change and cancel keep it; a failed check keeps the old choice; refusals show why', {}, async ($, on) => {
+  const long = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join('\n')
+  let reply: (p: string, mode: string) => unknown = (_p, mode) => ({ result: mode === 'check' ? 'nope' : long, ...(mode === 'check' ? { isError: true } : {}) })
+  const m = agentMachine()
+  const w = world(on, { agentRun: m.agentRun })
+  agentTool(on, (p, mode) => reply(p, mode))
+  w.store.set('agent', { agent: 'codex', model: 'gpt-a' })
+  await start($)
+  await w.clock.advance(5)
+  const pane = await mount($)
+  expect(await texts(pane)).not.toContain('Setup · step')
+  await pane.input({ key: 'agent:input', text: 'long?', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('line 12')
+  expect(await texts(pane)).not.toContain('line 13')
+  await pane.press({ key: (await keys(pane)).find((k: string) => k.startsWith('agent:more:'))! })
+  expect(await texts(pane)).toContain('line 20')
+  await pane.press({ key: 'agent:setup' })
+  await pane.press({ key: 'agent:pick:lmstudio' })
+  await pane.press({ key: 'agent:conn:next' })
+  await w.clock.advance(5)
+  await pane.press({ key: 'agent:next' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('nope')
+  await pane.press({ key: 'agent:back:model' })
+  await pane.press({ key: 'agent:back:signin' })
+  await pane.press({ key: 'agent:back:connect' })
+  await pane.press({ key: 'agent:back:agent' })
+  await pane.press({ key: 'agent:cancel' })
+  expect(await texts(pane)).toContain('Codex (OpenAI) · this machine · can edit') // still the saved agent
+  reply = () => ({ deny: 'the person said no' })
+  await pane.input({ key: 'agent:input', text: 'edit please', kind: 'submit' })
+  await w.clock.advance(5)
+  expect(await texts(pane)).toContain('Not run · the person said no')
 })
 
 test('a failed or empty answer says why and changes nothing else', {}, async ($, on) => {
