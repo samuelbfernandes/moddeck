@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { SHORT_MAX, SKILLS, allSkills, listRowsOf, listSize, rankTools, searchFirst, shortDesc, starFirst, toggleStar } from '../hooks/catalog'
+import { SHORT_MAX, SKILLS, allSkills, listRowsOf, listSize, rankTools, searchFirst, shortDesc, slashOnly, starFirst, toggleStar } from '../hooks/catalog'
 
 test('allSkills keeps the toolkit skills first, then every other installed skill by name, once', () => {
   const list = allSkills([{ name: 'zeta', desc: 'Z  line' }, { name: 'writing' }, { name: 'plug:plan-first' }, { name: 'alpha' }, { name: 'zeta' }, { name: ' ' }])
@@ -8,6 +8,23 @@ test('allSkills keeps the toolkit skills first, then every other installed skill
   expect(list.slice(SKILLS.length).map(k => k.id)).toEqual(['alpha', 'zeta'])
   expect(list.find(k => k.id === 'zeta')?.desc).toBe('Z line')
   expect(list.find(k => k.id === 'alpha')?.text).toBe('Use the alpha skill ')
+})
+
+test('slashOnly adds slash-only skills and plugin commands, skips listed ones, built-ins, MCP and moddeck mods; rows insert /name', () => {
+  const cmds = [
+    { name: 'octo:skill-doctor', description: 'Doctor', source: 'plugin', plugin: 'octo' },
+    { name: 'grill-me', description: 'Grill', source: 'user' },
+    { name: 'graphify', description: 'Graph', source: 'user' },
+    { name: 'clear', description: 'Clear', source: 'builtin' },
+    { name: 'mcp__x__p', description: 'MCP', source: 'mcp' },
+    { name: 'btw', description: 'Side question', source: 'plugin', plugin: 'moddeck' },
+    { name: 'concise', description: 'Switch', source: 'plugin', plugin: 'concise@moddeck' },
+  ]
+  const extra = slashOnly(cmds, new Set(['graphify']))
+  expect(extra.map(k => k.name)).toEqual(['octo:skill-doctor', 'grill-me'])
+  const list = allSkills([{ name: 'graphify' }, ...extra])
+  expect(list.find(k => k.id === 'grill-me')?.text).toBe('/grill-me ')
+  expect(list.find(k => k.id === 'graphify')?.text).toBe('Use the graphify skill ')
 })
 
 test('allSkills with nothing read yet is the toolkit list', () => {

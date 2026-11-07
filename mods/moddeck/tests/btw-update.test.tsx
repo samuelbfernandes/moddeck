@@ -116,7 +116,7 @@ test('with nothing to fork (a resumed session), the side question is answered ov
   on('model.complete', (_$, e) => (asked.push(String(e.prompt)), { value: { isAnswered: true, text: 'limma.', usage: USAGE } as never }))
   await start($)
   w.fork = () => ({ isAnswered: false, reason: 'nothing-to-fork' })
-  expect((await cmd($, 'btw', 'which package?')).text).toContain('thinking')
+  expect((await cmd($, 'side', 'which package?')).text).toContain('thinking')
   await w.clock.advance(5)
   const pane = await mount($)
   expect(await texts(pane)).toContain('limma.')
@@ -203,11 +203,11 @@ test('updateCheck off: no look-up at all', { options: { updateCheck: false } }, 
 })
 
 // ---- the Side Question panel -------------------------------------------------------------------------------------------------
-test('/btw is registered; /btw <question> opens the side bar, asks over the cached context, and the answer shows there only', {}, async ($, on) => {
+test('/side is registered (not /btw: Claude Code ships that name); /side <question> opens the side bar, asks over the cached context, and the answer shows there only', {}, async ($, on) => {
   const w = world(on)
   await start($)
-  expect(w.registered).toContain('btw')
-  const out = await cmd($, 'btw', 'what is a p-value?')
+  expect(w.registered).toContain('side')
+  const out = await cmd($, 'side', 'what is a p-value?')
   expect(out.text).toContain('thinking')
   expect(w.panes).toContain('moddeck')
   await w.clock.advance(5)
@@ -240,7 +240,7 @@ test('the Ask here field is always beside the title; Enter asks; the title expla
   expect(await texts(pane)).toContain('▸ 1')
   await pane.press({ key: 'btw:toggle' })
   expect(await texts(pane)).toContain('Nothing to ask about yet')
-  expect((await cmd($, 'btw', '')).text).toContain('type it in the box')
+  expect((await cmd($, 'side', '')).text).toContain('type it in the box')
   await pane.input({ key: 'btw:input', text: 'half a quest', kind: 'change' })
   expect(JSON.stringify(await pane.find({ key: 'btw:input' }))).toContain('"value":"half a quest"')
   const close = (await pane.findAll({ type: 'Button' })).map(b => (b as { key?: string }).key).find(k => k?.startsWith('btw:close:'))!
@@ -412,7 +412,7 @@ test('a failed or empty answer says why and changes nothing else', {}, async ($,
   const w = world(on)
   await start($)
   w.fork = () => ({ isAnswered: true, text: '   ', usage: USAGE })
-  await cmd($, 'btw', 'q')
+  await cmd($, 'side', 'q')
   await w.clock.advance(5)
   expect(await texts(await mount($))).toContain('The model sent no text')
 })
