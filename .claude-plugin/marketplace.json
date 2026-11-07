@@ -73,6 +73,11 @@
       "description": "Keeps the last 30 failed or refused tool calls of the session in a pane, each with a button that drafts a prompt asking Claude to explain it. Watches only; never blocks."
     },
     {
+      "name": "external-agent",
+      "source": "./mods/external-agent",
+      "description": "Delegate to another coding agent (Codex by default; Gemini CLI, Ollama or LM Studio models, or Claude Code) from Claude Code, sharing the same conversation: /agent, /agent-review, and a tool Claude can call like a sub-agent."
+    },
+    {
       "name": "filetree",
       "source": "./mods/filetree",
       "description": "The project's file tree in a pane beside the chat, lit up as Claude reads, edits and commits files. Read-only."
@@ -95,7 +100,7 @@
     {
       "name": "moddeck",
       "source": "./mods/moddeck",
-      "description": "A side bar with a live Session box, a Side Question panel (/btw), every mod in grouped cards (a switch is the mod's name, green on and red off; click it to flip), the skills and saved prompts, and an update check."
+      "description": "A side bar with a live Session box, a Side Question panel (/side), every mod in grouped cards (a switch is the mod's name, green on and red off; click it to flip), the skills and saved prompts, and an update check."
     },
     {
       "name": "model-picker",

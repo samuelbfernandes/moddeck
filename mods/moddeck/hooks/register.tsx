@@ -5,12 +5,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { BtwEntry } from '../types'
+import type { AgentWizard, BtwEntry } from '../types'
 import { INSTRUCTION, addEntry, buildPrompt, cutAnswer, digest, fallbackPrompt, footer, headline, isRunning, maxCharsOf, nextId, patchEntry, tokensOf, whyNot } from './btw'
 import { GROUPS, MAX_LIST_ROWS, MIN_LIST_ROWS, TOOLS, allSkills, listRowsOf, listSize, priced, rankTools, searchFirst, shortDesc, slashOnly, splitCommand, starFirst, toggleStar } from './catalog'
 import type { Action, InstalledSkill, Option, SavedPrompt, Tool } from './catalog'
 import { CARD_CHROME, barTarget, listAt, pillText, scrollBar, stepTop, trackCells } from './layout'
 import type { BottomList } from './layout'
+import { AGENTS, AGENT_IDS, CHECK_PROMPT, DEFAULT_AGENT, accessOf, connectionOf, detect, isConfig, isLocalModel, isSignedIn, listModels, signInWithKey } from './agents'
+import type { AgentConfig, Run } from './agents'
 import { isDirty, linkedWorktree, parseStatusV2 } from './gitinfo'
 import type { GitInfo } from './gitinfo'
 import {
@@ -48,10 +50,11 @@ const PANE_SURFACES = new Set(['terminal', 'desktop'])
  * theme's colour (light on a dark theme, dark on a light one), so a pill's fill is chosen to read under that text:
  * deep on a dark theme, a pale tint of the same hue on a light one.
  */
-type Ink = { fill: string; text: string; desc: string; link: string; on: string; off: string; run: string; dotOn: string; dotOff: string }
+type Ink = { fill: string; text: string; desc: string; link: string; on: string; off: string; run: string; dotOn: string; dotOff: string; agent: string; error: string }
+// agent: the External Agent box's title only (7.04:1 dark, 5.20:1 light on fill); error: failure text (5.96:1 dark, 4.58:1 light). WCAG AA checked.
 const INK: Record<'dark' | 'light', Ink> = {
-  dark: { fill: '#1F1F1E', text: '#ECEAE4', desc: '#9A9893', link: '#7FB2E5', on: '#166534', off: '#991B1B', run: '#374151', dotOn: '#22C55E', dotOff: '#EF4444' },
-  light: { fill: '#FAF9F5', text: '#1F1F1E', desc: '#6B6A65', link: '#185FA5', on: '#BBF7D0', off: '#FECACA', run: '#E5E7EB', dotOn: '#16A34A', dotOff: '#DC2626' },
+  dark: { fill: '#1F1F1E', text: '#ECEAE4', desc: '#9A9893', link: '#7FB2E5', on: '#166534', off: '#991B1B', run: '#374151', dotOn: '#22C55E', dotOff: '#EF4444', agent: '#5EB8B0', error: '#F87171' },
+  light: { fill: '#FAF9F5', text: '#1F1F1E', desc: '#6B6A65', link: '#185FA5', on: '#BBF7D0', off: '#FECACA', run: '#E5E7EB', dotOn: '#16A34A', dotOff: '#DC2626', agent: '#0F766E', error: '#DC2626' },
 }
 type ThemePick = 'light' | 'dark'
 const THEMES: readonly ThemePick[] = ['light', 'dark']
@@ -74,6 +77,18 @@ const folded = atom({ plugin: 'moddeck', key: 'folded' } as const, null as strin
 /** Rows opened by their ▸ button to show the full description (`tool:<id>`, `skill:<id>`, `prompt:<id>`); kept in the store as `opened`. null = not loaded. */
 const opened = atom({ plugin: 'moddeck', key: 'opened' } as const, null as string[] | null)
 const btwDraft = atom({ plugin: 'moddeck', key: 'btwDraft' } as const, '')
+/** The External Agent box, right under Side Question: the agent and model the setup wizard saved (also kept in the store
+ * as `agent`; the external-agent mod reads it from here), its chat, and the wizard while it is open. */
+const agentConf = atom({ plugin: 'moddeck', key: 'agent' } as const, null as AgentConfig | null)
+const agentWiz = atom({ plugin: 'moddeck', key: 'agentWiz' } as const, null as AgentWizard | null)
+/** The API key field: in memory only, emptied as soon as it is handed to the agent's own login. */
+const agentKey = atom({ plugin: 'moddeck', key: 'agentKey' } as const, '')
+const agentOpen = atom({ plugin: 'moddeck', key: 'agentOpen' } as const, false)
+const agentList = atom({ plugin: 'moddeck', key: 'agentChat' } as const, [] as BtwEntry[])
+const agentDraft = atom({ plugin: 'moddeck', key: 'agentDraft' } as const, '')
+/** Answers shown in full by their "more" button; the others stop at AGENT_CLAMP_LINES lines. */
+const agentFull = atom({ plugin: 'moddeck', key: 'agentFull' } as const, [] as number[])
+const AGENT_CLAMP_LINES = 12
 /** A newer release the person has not updated to yet (null = none known); the side bar shows a one-line button for it. */
 const updateAvail = atom({ plugin: 'moddeck', key: 'updateAvail' } as const, null as string | null)
 /** The expand button: the pane is drawn wide (`WIDE_COLUMNS`) instead of `COLUMNS`. */
@@ -406,6 +421,164 @@ async function askBtw($: Dollar, maxChars: number, text: string): Promise<string
     await update($, btwList, l => patchEntry(l, id, patch))
   })
   return 'Side Question · thinking · the answer is in the side bar'
+}
+
+// ---- External Agent: another coding agent, set up once by a wizard, working in the same conversation ---------------------------
+// The side bar never starts the agent for a task itself: it calls the external-agent mod's tool, which runs it (sharing this
+// conversation, able to edit by default) and goes through the permission check like any tool call. Each exchange is added to
+// the main thread, so Claude and every agent see the same history. moddeck runs only the wizard's harmless probes (versions,
+// sign-in status, model lists). No API key is stored by moddeck. Fail open: a failure is shown, nothing else is blocked.
+const AGENT_TOOL = 'mcp__external-agent__ask'
+/** An agent may take up to ten minutes; an entry still running after this no longer blocks a new task. */
+const AGENT_STALE_MS = 11 * 60_000
+const AGENT_MAX_CHARS = 6000
+/** How much of an answer goes into the visible thread note (the model reads the whole answer in its own row). */
+const AGENT_NOTE_CHARS = 1500
+
+/** Changes the open wizard (nothing when it is closed). */
+const patchWiz = ($: Dollar, f: (w: AgentWizard) => Partial<AgentWizard>) => update($, agentWiz, w => (w === null ? w : { ...w, ...f(w) }))
+const agentRun = ($: Dollar): Run => (argv, init) => $.process.run(argv, init)
+
+/** The external-agent tool: { isOk, text }. A refusal (the person said no, or the mod is missing) is a failure with its reason. */
+async function callAgent($: Dollar, prompt: string, mode: 'ask' | 'review' | 'check'): Promise<{ isOk: boolean; text: string }> {
+  try {
+    const r = (await $.tool.call({ tool: AGENT_TOOL, prompt, mode } as never)) as { deny?: string; result?: unknown; text?: string; isError?: true }
+    const body = typeof r.result === 'string' ? r.result : (r.text ?? '')
+    if (r.deny !== undefined) return { isOk: false, text: `Not run · ${r.deny}` }
+    return r.isError === true ? { isOk: false, text: body || 'The agent failed' } : { isOk: true, text: body }
+  } catch {
+    return { isOk: false, text: 'The external-agent mod is not installed (it runs the agent), or the call was stopped' }
+  }
+}
+
+/** One exchange into the main thread: a row the model reads, and a note the person sees. */
+async function shareInThread($: Dollar, name: string, question: string, answer: string, isOk: boolean): Promise<void> {
+  const said = isOk ? `${name} replied:\n${answer}` : `${name} could not answer: ${answer}`
+  await safe(() => $.session.append({ message: { type: 'user', content: [{ type: 'text', text: `[External Agent · from the side bar] The user asked ${name}: ${question}\n\n${said}` }] } } as never))
+  const note = answer.length > AGENT_NOTE_CHARS ? `${answer.slice(0, AGENT_NOTE_CHARS)}…` : answer
+  await safe(() => $.session.append({ message: { type: 'system', content: [{ type: 'text', text: `${name} · ${headline(question, 120)}\n${isOk ? note : `could not answer: ${note}`}` }] } } as never))
+}
+
+async function askAgentBox($: Dollar, text: string, mode: 'ask' | 'review'): Promise<string> {
+  const conf = await read($, agentConf)
+  if (conf === null) return 'External Agent · finish the setup first'
+  const name = AGENTS[conf.agent].label
+  const question = text.trim()
+  if (mode === 'ask' && question === '') return 'External Agent · type a task or question in the box'
+  const now = await $.clock.now()
+  const list = await read($, agentList)
+  if (list.some(a => a.status === 'thinking' && now - a.at < AGENT_STALE_MS)) return 'External Agent · one is still running'
+  await safe(() => update($, agentOpen, () => true))
+  const id = nextId(list)
+  const label = mode === 'review' ? `Review my uncommitted changes${question === '' ? '' : `: ${question}`}` : question
+  await update($, agentList, l => addEntry(l, { id, at: now, question: label, status: 'thinking', answer: '', isCut: false, tokens: null, note: name }))
+  defer($, async () => {
+    const a = await callAgent($, question, mode)
+    const cut = cutAnswer(a.text, AGENT_MAX_CHARS)
+    const patch: Partial<BtwEntry> = a.isOk ? { status: 'done', answer: cut.text, isCut: cut.isCut, note: name } : { status: 'failed', note: headline(a.text, 300) }
+    await update($, agentList, l => patchEntry(l, id, patch))
+    await shareInThread($, name, label, a.text, a.isOk)
+  })
+  return `External Agent · ${name} is ${mode === 'review' ? 'reviewing' : 'working'}`
+}
+
+// The wizard: agent → connection → sign-in (this machine only) → model → connection check. Slow parts run deferred.
+const FRESH_WIZ = (c: AgentConfig | null): AgentWizard => ({
+  step: 'agent',
+  agent: c?.agent ?? DEFAULT_AGENT,
+  connection: c === null ? 'local' : connectionOf(c),
+  access: c === null ? 'edit' : accessOf(c),
+  baseUrl: c?.baseUrl ?? '',
+  found: {},
+  signedIn: null,
+  models: [],
+  model: c?.model ?? '',
+  busy: '',
+  note: '',
+  isOk: false,
+})
+
+async function wizOpen($: Dollar): Promise<void> {
+  await update($, agentWiz, () => FRESH_WIZ(null))
+  const conf = await read($, agentConf)
+  await update($, agentWiz, () => FRESH_WIZ(conf))
+  defer($, async () => {
+    for (const id of AGENT_IDS) {
+      const f = await detect(agentRun($), id)
+      await patchWiz($, w => ({ found: { ...w.found, [id]: f } }))
+    }
+  })
+}
+
+/** After the connection step: on this machine, the sign-in check and models; through the API, the models a local server lists. */
+async function wizAfterConnect($: Dollar): Promise<void> {
+  const w0 = await read($, agentWiz)
+  if (w0 === null) return
+  const conf = await read($, agentConf)
+  const keepModel = (models: string[]) => (conf !== null && conf.agent === w0.agent && (conf.model === '' || models.includes(conf.model)) ? conf.model : (models[0] ?? ''))
+  if (w0.connection === 'api') {
+    await patchWiz($, () => ({ step: 'model', signedIn: null, busy: 'Looking for models…', note: '' }))
+    defer($, async () => {
+      const models = isLocalModel(w0.agent) ? await listModels(agentRun($), w0.agent) : []
+      await patchWiz($, () => ({ models, model: keepModel(models), busy: '' }))
+    })
+    return
+  }
+  await patchWiz($, () => ({ step: 'signin', signedIn: null, models: [], busy: 'Checking it is installed and signed in…', note: '', isOk: false }))
+  defer($, async () => {
+    const run = agentRun($)
+    const found = await detect(run, w0.agent)
+    if (!found.isInstalled) {
+      await patchWiz($, w => ({ found: { ...w.found, [w0.agent]: found }, signedIn: false, busy: '' }))
+      return
+    }
+    const signed = await isSignedIn(run, w0.agent)
+    const models = signed ? await listModels(run, w0.agent) : []
+    await patchWiz($, w => ({ found: { ...w.found, [w0.agent]: found }, signedIn: signed, models, model: keepModel(models), busy: '', step: signed ? 'model' : 'signin' }))
+  })
+}
+
+async function wizUseKey($: Dollar): Promise<void> {
+  const key = await read($, agentKey)
+  await update($, agentKey, () => '') // the key leaves moddeck's memory at once
+  const w0 = await read($, agentWiz)
+  if (w0 === null || key.trim() === '') return
+  await patchWiz($, () => ({ busy: 'Signing in…', note: '' }))
+  defer($, async () => {
+    const ok = await signInWithKey(agentRun($), w0.agent, key)
+    if (ok) await wizAfterConnect($)
+    else await patchWiz($, () => ({ busy: '', note: 'That key was not accepted.' }))
+  })
+}
+
+/** The check runs through the external-agent mod with the wizard's choice saved first (it reads moddeck's `agent`). */
+async function wizCheck($: Dollar): Promise<void> {
+  const w0 = await read($, agentWiz)
+  if (w0 === null || w0.busy !== '') return
+  const before = await read($, agentConf)
+  const trial: AgentConfig = { agent: w0.agent, model: w0.model.trim(), connection: w0.connection, access: w0.access, ...(w0.connection === 'api' && w0.baseUrl.trim() ? { baseUrl: w0.baseUrl.trim() } : {}) }
+  await patchWiz($, () => ({ step: 'check', busy: 'Running the connection check…', note: '', isOk: false }))
+  await update($, agentConf, () => trial)
+  defer($, async () => {
+    const a = await callAgent($, CHECK_PROMPT, 'check')
+    if (!a.isOk) await update($, agentConf, () => before) // a failed check leaves the old choice in force
+    await patchWiz($, () => ({ busy: '', isOk: a.isOk, note: headline(a.text, 300) }))
+  })
+}
+
+async function wizFinish($: Dollar): Promise<void> {
+  const w = await read($, agentWiz)
+  const conf = await read($, agentConf)
+  if (w === null || !w.isOk || conf === null) return
+  await safe(() => $.store.set('agent', conf))
+  await update($, agentWiz, () => null)
+}
+
+/** Cancel: back to the saved choice (a passing check may have tried another). */
+async function wizCancel($: Dollar): Promise<void> {
+  const saved = await attempt(() => $.store.get('agent'))
+  if (isConfig(saved)) await update($, agentConf, () => saved)
+  await update($, agentWiz, () => null)
 }
 
 // ---- update check: `git ls-remote --tags` for the newest release, asked once per window; nothing is installed without a yes ----
@@ -813,6 +986,12 @@ export const register: Register = (on, options) => {
     } catch {
       // without it the box at the bottom of the side bar still takes questions
     }
+    // The External Agent set up in an earlier session; none yet means the box opens on its setup wizard.
+    defer($, async () => {
+      const saved = await attempt(() => $.store.get('agent'))
+      if (isConfig(saved)) await update($, agentConf, () => saved)
+      else if ((await read($, agentWiz)) === null) await wizOpen($)
+    })
     if (updateCheckOn) defer($, async () => void (await checkForUpdate($, false))) // every time it is turned on: a quiet look at the newest release
     if (showSession) defer($, () => primeSession($)) // reading only: never blocks the start
     defer($, () => readSkills($)) // the Skills box lists every installed skill
@@ -1107,6 +1286,253 @@ export const register: Register = (on, options) => {
               )}
             </Box>
           ))}
+      </Box>
+    )
+
+    // The External Agent box, right under Side Question: its title on top, then the setup wizard (first time, or ⚙ change)
+    // or the conversation with the agent, newest last, and a field that grows with what is typed.
+    const agentCfg = await read($, agentConf)
+    const wiz = await read($, agentWiz)
+    const chats = await read($, agentList)
+    const keyDraft = await read($, agentKey)
+    const chatBusy = chats.some(b => b.status === 'thinking')
+    const accent = ink?.agent ?? 'suggestion'
+    const errorInk = ink?.error ?? 'error'
+    const choiceLine = (c: AgentConfig) =>
+      `${AGENTS[c.agent].label} · ${connectionOf(c) === 'api' ? 'API' : 'this machine'} · ${connectionOf(c) === 'api' ? 'answers only' : accessOf(c) === 'edit' ? 'can edit' : 'read-only'}`
+    const head = (
+      <Box key="agent:head" columnGap={1} alignItems="center" {...fit}>
+        <Box key="agent:title" flexShrink={0} hover={{ scope: 'agent-tip' }}>
+          <Text bold color={accent}>{`External Agent $${chatBusy || (wiz !== null && wiz.busy !== '') ? ' …' : ''}`}</Text>
+        </Box>
+        <Box flexGrow={1} flexShrink={1} {...fit}>
+          {agentCfg !== null && wiz === null && (
+            <Text {...dim} wrap="truncate-end">
+              {choiceLine(agentCfg)}
+            </Text>
+          )}
+        </Box>
+        {wiz === null && (
+          <Box key="agent:setup:box" flexShrink={0}>
+            <Button key="agent:setup" plain label="change the agent, connection or model" onPress={() => void wizOpen($)}>
+              <Text color={link}>⚙ change</Text>
+            </Button>
+          </Box>
+        )}
+      </Box>
+    )
+    const tip = (
+      <Box position="absolute" top={1} left={0} right={0} display="none" hover={{ scope: 'agent-tip', display: 'flex' }} borderStyle="round" paddingX={1} {...fill}>
+        <Text {...dim} wrap="wrap">
+          Hand a task to another coding agent (Codex by default; Gemini, a local model through Ollama or LM Studio, or Claude Code). It sees this conversation, and by default can edit files and run commands in the project inside its own sandbox; each task asks your permission first. Its answer is added to the chat so Claude sees it too. Each task uses that agent's quota.
+        </Text>
+      </Box>
+    )
+    let body: unknown[] = []
+    if (wiz !== null) {
+      const steps: AgentWizard['step'][] = wiz.connection === 'api' ? ['agent', 'connect', 'model', 'check'] : ['agent', 'connect', 'signin', 'model', 'check']
+      const back = (step: AgentWizard['step']) => (
+        <Button key={`agent:back:${step}`} plain onPress={() => void patchWiz($, () => ({ step, busy: '', note: '' }))}>
+          <Text color={link}>← back</Text>
+        </Button>
+      )
+      const cancel =
+        agentCfg !== null || (await attempt(() => $.store.get('agent'))) !== undefined ? (
+          <Button key="agent:cancel" plain onPress={() => void wizCancel($)}>
+            <Text color={link}>cancel</Text>
+          </Button>
+        ) : null
+      const choose = (key: string, isOn: boolean, label: string, onPress: () => void) => (
+        <Button key={key} plain onPress={onPress}>
+          <Text color={link} wrap="truncate-end">{`${isOn ? '●' : '○'} ${label}`}</Text>
+        </Button>
+      )
+      body.push(
+        <Box key="agent:wiz:top" columnGap={2} {...fit}>
+          <Text bold {...inked} wrap="wrap">
+            {`Setup · step ${steps.indexOf(wiz.step) + 1} of ${steps.length}`}
+          </Text>
+          {cancel}
+        </Box>,
+      )
+      if (wiz.step === 'agent') {
+        body.push(<Text key="agent:wiz:q" {...inked} wrap="wrap">Which agent should Claude work with?</Text>)
+        for (const id of AGENT_IDS) {
+          const f = wiz.found[id]
+          const state = f === undefined ? 'checking…' : f.isInstalled ? `installed${f.version ? ` · ${headline(f.version, 28)}` : ''}` : f.version ? f.version : 'not found on this machine'
+          body.push(choose(`agent:pick:${id}`, wiz.agent === id, `${AGENTS[id].label}${id === DEFAULT_AGENT ? ' (default)' : ''} · ${state}`, () => void patchWiz($, () => ({ agent: id, step: 'connect', baseUrl: '', model: '' }))))
+        }
+      } else if (wiz.step === 'connect') {
+        const a = AGENTS[wiz.agent]
+        body.push(<Text key="agent:wiz:cq" {...inked} wrap="wrap">{`How should Claude connect to ${a.label}?`}</Text>)
+        body.push(choose('agent:conn:local', wiz.connection === 'local', `On this machine (default)${isLocalModel(wiz.agent) ? ' · runs inside Codex' : ''} · full tools`, () => void patchWiz($, () => ({ connection: 'local' }))))
+        body.push(choose('agent:conn:api', wiz.connection === 'api', 'Through its API (opt-in) · answers only, no tools', () => void patchWiz($, () => ({ connection: 'api' }))))
+        if (wiz.connection === 'local') {
+          body.push(<Text key="agent:wiz:aq" {...inked} wrap="wrap">What may it do?</Text>)
+          body.push(choose('agent:access:edit', wiz.access === 'edit', 'Edit files and run commands in this project (sandboxed)', () => void patchWiz($, () => ({ access: 'edit' }))))
+          body.push(choose('agent:access:read', wiz.access === 'read', 'Read only', () => void patchWiz($, () => ({ access: 'read' }))))
+          if (wiz.agent === 'claude' && wiz.access === 'edit') body.push(<Text key="agent:wiz:cl" {...dim} wrap="wrap">Claude Code can edit files here, but not run commands: nobody can approve them in a background run.</Text>)
+          if (!a.isVerified) body.push(<Text key="agent:wiz:uv" {...dim} wrap="wrap">{`${a.label} was not installed when this was built: the connection check shows whether it works.`}</Text>)
+        } else {
+          if (Input !== undefined) body.push(<Input key="agent:url" placeholder={a.apiBase} submitLabel="set" value={wiz.baseUrl} onInput={(v: string) => void patchWiz($, () => ({ baseUrl: v }))} onSubmit={(v: string) => void patchWiz($, () => ({ baseUrl: v }))} />)
+          body.push(<Text key="agent:wiz:key" {...dim} wrap="wrap">{`Address: ${wiz.baseUrl.trim() || a.apiBase}. A key, if this API needs one, goes in /config › external-agent › API key (kept in secure storage; local servers need none).`}</Text>)
+        }
+        body.push(
+          <Box key="agent:conn:row" columnGap={2}>
+            {back('agent')}
+            <Button key="agent:conn:next" plain onPress={() => void wizAfterConnect($)}>
+              <Text color={link}>next →</Text>
+            </Button>
+          </Box>,
+        )
+      } else if (wiz.step === 'signin') {
+        const a = AGENTS[wiz.agent]
+        if (wiz.busy !== '') body.push(<Text key="agent:busy" {...dim}>{wiz.busy}</Text>)
+        else if (wiz.found[wiz.agent]?.isInstalled === false) {
+          const why = isLocalModel(wiz.agent) && wiz.found[wiz.agent]?.version ? `${a.label} is here, but Codex, which runs it, is not.` : `${a.label} is not installed on this machine.`
+          body.push(<Text key="agent:missing" color={errorInk} wrap="wrap">{`${why} Install it, then check again, or go back and use its API.`}</Text>)
+        } else if (wiz.signedIn === false) {
+          body.push(<Text key="agent:nosign" {...inked} wrap="wrap">{`${a.label} is installed but not signed in, so it cannot run here yet.`}</Text>)
+          if (a.takesApiKey && Input !== undefined) {
+            body.push(
+              <Input key="agent:key" placeholder="API key (visible while typing; the agent stores it, moddeck does not)" submitLabel="sign in" value={keyDraft} onInput={(v: string) => void update($, agentKey, () => v)} onSubmit={() => void wizUseKey($)} />,
+            )
+          }
+          body.push(<Text key="agent:howto" {...dim} wrap="wrap">{`${a.takesApiKey ? 'Or run' : 'Run'} \`${a.signIn}\` in a terminal, then check again.`}</Text>)
+        }
+        if (wiz.note !== '') body.push(<Text key="agent:note" color={errorInk} wrap="wrap">{wiz.note}</Text>)
+        if (wiz.busy === '') {
+          body.push(
+            <Box key="agent:signin:row" columnGap={2}>
+              {back('connect')}
+              <Button key="agent:recheck" plain onPress={() => void wizAfterConnect($)}>
+                <Text color={link}>↻ check again</Text>
+              </Button>
+            </Box>,
+          )
+        }
+      } else if (wiz.step === 'model') {
+        if (wiz.busy !== '') body.push(<Text key="agent:busy" {...dim}>{wiz.busy}</Text>)
+        if (wiz.connection === 'local' && wiz.signedIn === true) body.push(<Text key="agent:signed" {...dim} wrap="wrap">{`${AGENTS[wiz.agent].label} is ready on this machine · no API key needed`}</Text>)
+        body.push(<Text key="agent:wiz:m" {...inked}>Pick a model, or type one:</Text>)
+        const choices = ['', ...wiz.models].slice(0, 13)
+        for (const m of choices) body.push(choose(`agent:model:${m || 'default'}`, wiz.model === m, m || "the agent's own default", () => void patchWiz($, () => ({ model: m }))))
+        if (Input !== undefined) body.push(<Input key="agent:model:typed" placeholder="model name" submitLabel="use" value={wiz.models.includes(wiz.model) ? '' : wiz.model} onInput={(v: string) => void patchWiz($, () => ({ model: v }))} onSubmit={(v: string) => void patchWiz($, () => ({ model: v.trim() }))} />)
+        body.push(
+          <Box key="agent:model:row" columnGap={2}>
+            {back(wiz.connection === 'api' ? 'connect' : 'signin')}
+            <Button key="agent:next" plain onPress={() => void wizCheck($)}>
+              <Text color={link}>next: connection check →</Text>
+            </Button>
+          </Box>,
+        )
+      } else {
+        body.push(<Text key="agent:wiz:c" {...inked} wrap="wrap">{`Connection check: ${AGENTS[wiz.agent].label}${wiz.model ? ` (${wiz.model})` : ''} answers a one-word question. It asks your permission first.`}</Text>)
+        if (wiz.busy !== '') body.push(<Text key="agent:busy" {...dim}>{`${wiz.busy} (up to a minute)`}</Text>)
+        else if (wiz.note !== '') body.push(<Text key="agent:note" color={wiz.isOk ? accent : errorInk} wrap="wrap">{wiz.isOk ? `✓ ${wiz.note}` : wiz.note}</Text>)
+        if (wiz.busy === '') {
+          body.push(
+            <Box key="agent:check:row" columnGap={2}>
+              {back('model')}
+              {wiz.isOk ? (
+                <Button key="agent:finish" plain onPress={() => void wizFinish($)}>
+                  <Text color={link}>finish ✓</Text>
+                </Button>
+              ) : (
+                <Button key="agent:check" plain onPress={() => void wizCheck($)}>
+                  <Text color={link}>{wiz.note === '' ? 'run the check' : '↻ try again'}</Text>
+                </Button>
+              )}
+            </Box>,
+          )
+        }
+      }
+    } else if (agentCfg !== null) {
+      const isAgentOpen = await read($, agentOpen)
+      const draftText = await read($, agentDraft)
+      const fullIds = await read($, agentFull)
+      const askIt = (v: string, mode: 'ask' | 'review') => {
+        if (mode === 'ask') void update($, agentDraft, () => '')
+        void askAgentBox($, v, mode).then(t => $.ui.toast(t))
+      }
+      // The field grows with the text: one row per line (long lines wrap), up to eight.
+      const width = Math.max(10, room - 6)
+      const fieldRows = Math.min(8, Math.max(1, draftText.split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / width)), 0)))
+      const thread = isAgentOpen ? [...chats].reverse() : []
+      // Until the first answer, say what the agent may do here: the tip on hover is not seen by everyone.
+      const scope = connectionOf(agentCfg) === 'api' ? 'answer questions only' : accessOf(agentCfg) === 'edit' ? 'read and edit this project and run commands' : 'read this project'
+      const hint = `${AGENTS[agentCfg.agent].label} can ${scope}.${connectionOf(agentCfg) === 'api' ? '' : ' Each task asks your permission first.'}`
+      body = [
+        ...(chats.length === 0 ? [<Text key="agent:hint" {...dim} wrap="wrap">{hint}</Text>] : []),
+        ...thread.map(b => {
+          const lines = b.answer.split('\n')
+          const isLong = lines.length > AGENT_CLAMP_LINES
+          const isFull = fullIds.includes(b.id)
+          return (
+            <Box key={`agent:${b.id}`} flexDirection="column">
+              <Text color={link} wrap="wrap">{`› ${b.question}`}</Text>
+              {b.answer !== '' && (
+                <Text {...inked} wrap="wrap">
+                  {isLong && !isFull ? `${lines.slice(0, AGENT_CLAMP_LINES).join('\n')}\n…` : b.answer}
+                </Text>
+              )}
+              {b.status === 'failed' ? (
+                <Text color={errorInk} wrap="wrap">
+                  {b.note}
+                </Text>
+              ) : (
+                <Text {...dim} wrap="truncate-end">
+                  {b.status === 'thinking' ? `${b.note} is working… stops after 10 min · you can keep chatting` : `${b.note} · added to the chat${b.isCut ? ' · cut here' : ''}`}
+                </Text>
+              )}
+              {b.status !== 'thinking' && (
+                <Box columnGap={2}>
+                  {isLong && (
+                    <Button key={`agent:more:${b.id}`} plain onPress={() => void update($, agentFull, l => (l.includes(b.id) ? l.filter(i => i !== b.id) : [...l, b.id]))}>
+                      <Text color={link}>{isFull ? '▴ less' : '▾ more'}</Text>
+                    </Button>
+                  )}
+                  <Button key={`agent:close:${b.id}`} plain onPress={() => void update($, agentList, l => l.filter(a => a.id !== b.id))}>
+                    <Text color={link}>✕ hide</Text>
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )
+        }),
+        <Box key="agent:row" columnGap={1} alignItems="flex-start" {...fit}>
+          {chats.length > 0 && (
+            <Button key="agent:toggle" plain label={desk ? undefined : isAgentOpen ? 'hide the conversation' : 'show the conversation'} onPress={() => void update($, agentOpen, o => !o)}>
+              <Text {...inked}>{isAgentOpen ? '▾' : `▸ ${chats.length}`}</Text>
+            </Button>
+          )}
+          <Box flexGrow={1} flexShrink={1} {...fit}>
+            {Input !== undefined ? (
+              <Input key="agent:input" placeholder={`Give ${AGENTS[agentCfg.agent].label} a task`} submitLabel="send" rows={fieldRows} value={draftText} onInput={(v: string) => void update($, agentDraft, () => v)} onSubmit={(v: string) => askIt(v, 'ask')} />
+            ) : (
+              <Text {...dim} wrap="truncate-end">
+                type /agent your task
+              </Text>
+            )}
+          </Box>
+        </Box>,
+        <Box key="agent:opts" columnGap={2} {...fit}>
+          <Button key="agent:model" plain label="pick another model" onPress={() => void wizOpen($).then(() => patchWiz($, () => ({ step: 'connect' })))}>
+            <Text color={link} wrap="truncate-end">{`model: ${agentCfg.model || 'default'} ▾`}</Text>
+          </Button>
+          <Button key="agent:review" plain label="review my uncommitted changes" onPress={() => askIt('', 'review')}>
+            <Text color={link}>review changes</Text>
+          </Button>
+        </Box>,
+      ]
+    } else {
+      body = [<Text key="agent:loading" {...dim}>Loading…</Text>]
+    }
+    const agentBox = (
+      <Box key="agent" flexDirection="column" borderStyle="round" paddingX={1} {...fill} {...fit}>
+        {head}
+        {tip}
+        {body as never}
       </Box>
     )
 
@@ -1467,6 +1893,7 @@ export const register: Register = (on, options) => {
         )}
         {sessionBox as never}
         {btwBox as never}
+        {agentBox as never}
         {toolCards}
         {skillCard as never}
         {promptCard as never}

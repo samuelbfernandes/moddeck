@@ -1,5 +1,33 @@
 /** One saved prompt, as prompt-library keeps it. */
 export type SavedPrompt = { name: string; text: string }
+/** An External Agent moddeck knows (hooks/agents.ts declares the same shapes; a contract cannot import). */
+export type AgentId = 'codex' | 'gemini' | 'ollama' | 'lmstudio' | 'claude'
+export type AgentConfig = { agent: AgentId; model: string; connection?: 'local' | 'api'; access?: 'edit' | 'read'; baseUrl?: string }
+export type Found = { isInstalled: boolean; version: string }
+/** The External Agent setup wizard: agent → connection → sign-in → model → connection check. */
+export type AgentWizard = {
+  step: 'agent' | 'connect' | 'signin' | 'model' | 'check'
+  agent: AgentId
+  /** 'local' (the default): the agent's own program here; 'api': opt-in, answers only. */
+  connection: 'local' | 'api'
+  /** 'edit' (the default): it may edit files and run commands in the project; 'read': read only. */
+  access: 'edit' | 'read'
+  /** The API address typed for the API connection ('' = the agent's usual one). */
+  baseUrl: string
+  /** What detection found per agent; absent = still checking. */
+  found: Partial<Record<AgentId, Found>>
+  /** Signed in on this machine (no API key needed); null = not checked yet. */
+  signedIn: boolean | null
+  models: string[]
+  /** The model picked; '' = the agent's own default. */
+  model: string
+  /** What is running now ('' = nothing). */
+  busy: string
+  /** The last result or problem to show. */
+  note: string
+  /** The connection check passed. */
+  isOk: boolean
+}
 /** One side question in the Side Question panel. */
 export type BtwEntry = { id: number; at: number; question: string; status: 'thinking' | 'done' | 'failed'; answer: string; isCut: boolean; tokens: number | null; note: string }
 /** The automatic open of the side bar, once per session. */
@@ -83,6 +111,20 @@ declare module 'claude-code' {
       listQuery: Record<string, string>
       /** The text in the Side Question's Ask here field, emptied after asking and by ✕ close. */
       btwDraft: string
+      /** The External Agent the setup wizard saved (also in the store as `agent`); null = not set up yet. The external-agent mod reads it. */
+      agent: AgentConfig | null
+      /** The setup wizard while it is open; null = closed. */
+      agentWiz: AgentWizard | null
+      /** The wizard's API key field: in memory only, emptied as soon as it is handed to the agent's own login. */
+      agentKey: string
+      /** The External Agent box's answers are shown. */
+      agentOpen: boolean
+      /** The External Agent box's last questions and answers, newest first (in memory only); `note` holds the agent's name. */
+      agentChat: BtwEntry[]
+      /** The text in the External Agent box's field. */
+      agentDraft: string
+      /** Ids of answers shown in full (the others are clamped to 12 lines). */
+      agentFull: number[]
       /** Lines each list shows (`skills`, `prompts`), as its more/fewer buttons set it (also kept in the store); null = not loaded. */
       listRows: Record<string, number> | null
       /** Starred skill ids, drawn at the top of the Skills box (also kept in the store); null = not loaded. */
