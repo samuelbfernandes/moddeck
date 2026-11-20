@@ -60,7 +60,9 @@ for (const surface of SURFACES) {
     expect(await band.find({ key: 'savvy-band' })).toBeDefined()
     expect(await band.find({ key: 'details' })).toBeUndefined()
     expect(await band.find({ key: 'hide' })).toBeDefined()
-    expect(await band.findAll({ type: 'Box' })).toHaveLength(1)
+    // one band line; the engine's own above-prompt element, when it has one, is stacked under it
+    const boxes = (await band.findAll({ type: 'Box' })).map(b => (b as { key?: string }).key)
+    expect(boxes.filter(k => k !== 'savvy-stack')).toEqual(['savvy-band'])
   })
 
   test(`${surface}: TaskCreate then TaskUpdate drive the same bar; a failed update changes nothing`, async ($, on) => {
