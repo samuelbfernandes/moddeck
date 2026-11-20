@@ -37,12 +37,15 @@ test('paths: code files with a method word count; tests, docs and other files do
 test('commands: review, save and the review skill are recognised', () => {
   expect(isReviewCommand('git diff --staged | codex exec -s read-only "x"')).toBe(true)
   expect(isReviewCommand('dev/dual.sh review --staged')).toBe(true)
+  expect(isReviewCommand('~/.gemini/bin/agy -p "review\nthis" --model gemini-4-neon-medium --mode plan')).toBe(true)
+  expect(isReviewCommand('agy -p "fix it" --mode accept-edits')).toBe(false)
   expect(isReviewCommand('git commit -m x')).toBe(false)
   expect(isSaveCommand('git commit -m "x"')).toBe(true)
   expect(isSaveCommand('git -C repo push origin main')).toBe(true)
   expect(isSaveCommand('git status')).toBe(false)
   expect(isReviewSkill('review')).toBe(true)
   expect(isReviewSkill('moddeck:review')).toBe(true)
+  expect(isReviewSkill('dual-review')).toBe(true)
   expect(isReviewSkill('writing')).toBe(false)
 })
 

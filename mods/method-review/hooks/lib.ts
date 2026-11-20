@@ -15,13 +15,13 @@ export function isMethodPath(path: string, words: readonly string[]): boolean {
   return words.some(w => w !== '' && p.includes(w.toLowerCase()))
 }
 
-/** A command that reviews with another model: Codex, or the repository's dev/dual.sh. */
-export const isReviewCommand = (cmd: string): boolean => /\bcodex\s+(exec|review)\b|dev\/dual\.sh/.test(cmd)
+/** A command that reviews with another model: Codex, Gemini through Antigravity in plan (read-only) mode, or the repository's dev/dual.sh. */
+export const isReviewCommand = (cmd: string): boolean => /\bcodex\s+(exec|review)\b|dev\/dual\.sh|\bagy\b[\s\S]*--mode[\s=]+plan\b/.test(cmd)
 
 /** A command that saves or shares the work. */
 export const isSaveCommand = (cmd: string): boolean => /\bgit\b[^|;&\n]*?\b(commit|push)\b/.test(cmd)
 
 /** The review skill, named plainly or with its plugin prefix. */
-export const isReviewSkill = (name: string): boolean => name === 'review' || name.endsWith(':review')
+export const isReviewSkill = (name: string): boolean => ['review', 'dual-review'].some(s => name === s || name.endsWith(`:${s}`))
 
 export const shortList = (files: readonly string[], n = 3): string => `${files.slice(0, n).join(', ')}${files.length > n ? ` and ${files.length - n} more` : ''}`

@@ -6,6 +6,7 @@ export const RULES: Rule[] = [
   { skill: 'ahpcc', test: t => /\b(ahpcc|pinnacle|slurm|sbatch|squeue|on the (hpc|cluster)|hpc cluster)\b/i.test(t) },
   { skill: 'assess-plugin', test: t => /\b(assess|vet|audit|is it safe|worth installing|safe to install|should i install)\b[^.?!]*\b(plugin|mod|mcp|skill)s?\b/i.test(t) },
   { skill: 'agents-md-scaffold', test: t => /\bagents\.md\b|\b(bootstrap|scaffold|set ?up|start|create)\b[^.?!]*\b(new )?(repo|repository|project)\b/i.test(t) && /\b(rules|agents|guard|new)\b/i.test(t) },
+  { skill: 'dual-review', test: t => /\b(gemini|codex|antigravity|neon)\b[^.?!]{0,40}\breview|\breview\b[^.?!]{0,40}\b(by|with|from|on|using) (gemini|codex|antigravity|neon)\b/i.test(t) },
   { skill: 'review', test: t => /\b(review|second opinion|theory review|check (this|my|the)|look (this|it) over|before (i |we )?(commit|push))\b/i.test(t) },
   { skill: 'plan-first', test: (t, n) => (n >= 12 && /\b(build|implement|create|design|develop|write)\b[^.?!]{0,60}\b(app|portal|pipeline|package|dashboard|tool|feature|workflow|simulation|analysis|framework)\b/i.test(t)) || /\b(plan|scope|align|spec)\b[^.?!]*\b(first|before)\b/i.test(t) },
   { skill: 'writing', test: t => /\b(email|e-mail|abstract|cover letter|tagline|rewrite|reword|humani[sz]e|de-?slop|sounds? like (ai|chatgpt)|draft (a|an|the|my))\b/i.test(t) },
