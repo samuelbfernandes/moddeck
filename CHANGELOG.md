@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.5.1] - unreleased
+- moddeck 0.12.2 / skill-router 0.1.1 / new skill **dual-review**: a change is reviewed read-only by Codex or by Gemini through the Antigravity CLI (`agy`, Neon at medium effort by default). It picks the reviewer and the scope (a commit, staged or listed files), runs the CLI outside the sandbox with an allow-list of read-only commands, and checks every finding before fixing it. Uses `dev/dual.sh` when a repo has one. skill-router hints it when a prompt asks for a Gemini or Codex review. method-review 0.1.1: an `agy … --mode plan` review or the dual-review skill clears the unreviewed list.
 - moddeck 0.12.1 / new skill **skill-cleanup**: audits installed skills, plugins, MCP servers and hooks (copies and drift, overlaps to merge, privacy and security, telemetry, hook order, stale records, private forks), writes a report, and applies only the items you pick, reversibly. It leaves usage and context cost to Claude Code's skill-doctor and runs after it.
 - moddeck 0.10.9: the side-question command is now **`/side`**. Claude Code ships its own `/btw`, so registering that name was refused and `claude plugin validate` reported the session-start hook as skipped. Saved answers carry over.
 - moddeck 0.10.9: the Skills box lists every skill, including slash-only ones (`disable-model-invocation`, such as all octo skills) and plugin or user slash commands. Before, it read only the skills the model may invoke. Those rows insert `/name` instead of "Use the … skill".

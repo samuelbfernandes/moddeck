@@ -24,6 +24,8 @@ test('rules: each skill matches its own kind of request and nothing else', () =>
   expect(pick('submit this job to the cluster with sbatch and wait for it', [])).toBe('ahpcc')
   expect(pick('is it safe to install this plugin from github', [])).toBe('assess-plugin')
   expect(pick('can you review my last change before I push', [])).toBe('review')
+  expect(pick('have Gemini review my last commit please', [])).toBe('dual-review')
+  expect(pick('get an independent review from codex of the staged change', [])).toBe('dual-review')
   expect(pick('build a portal that lets lab members upload phenotype files and see results', [])).toBe('plan-first')
   expect(pick('rewrite this email so it sounds less formal please', [])).toBe('writing')
   expect(pick('fix the off by one error in the loop above please', [])).toBeUndefined()

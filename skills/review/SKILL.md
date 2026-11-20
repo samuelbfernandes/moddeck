@@ -26,6 +26,8 @@ description: Use after implementing a change, before commit or push, or when ask
    - A push already triggers this for repos with `docs/THEORY_REVIEW.md` (or `git config toolkit.theoryPaths`): the global
      pre-push hook has Codex review the pushed diff read-only and blocks on FAIL. Use this skill for an earlier or deeper
      review, or where that hook is not active.
+   - To run it with Codex or Gemini (Antigravity), use the `dual-review` skill: it picks the scope, runs the CLI
+     read-only (through `dev/dual.sh` when the repo has one) and checks the findings.
    - If the repo has `dev/dual.sh`, use it: `dev/dual.sh review --staged` (or `<paths>`). Read `dev/README.md` first.
    - Codex CLI (flags checked against 0.162.0): read-only structured review of a diff:
      `git diff --staged | codex exec -s read-only --ephemeral -C <repo> --output-schema ~/.claude/moddeck/global/theory-review.schema.json -o "$TMPDIR/review.json" "<reviewer prompt>"`.
